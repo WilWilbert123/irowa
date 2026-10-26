@@ -1,0 +1,67 @@
+// src/app/chat/page.tsx
+"use client";
+
+import React, { useState } from "react";
+import { ChatRoomList } from "@/components/chat/chat-room-list";
+import { ChatMessageList } from "@/components/chat/chat-message-list";
+import { ChatInput } from "@/components/chat/chat-input";
+import { useWaterSources } from "@/hooks/use-water-sources";
+import { useChat } from "@/contexts/chat-context";
+import { useRouter } from "next/navigation";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MessageSquare, Droplets } from "lucide-react";
+
+export default function ChatMainPage() {
+  const router = useRouter();
+  const isMobile = useIsMobile();
+  const { sources } = useWaterSources();
+  const [activeRoomId, setActiveRoomId] = useState<string>("c3333333-3333-4333-c333-333333333333"); // Maasim River from Mockup 4
+  const { messages, isLoading, sendMessage, setActiveWaterSourceId } = useChat();
+
+  const handleSelectRoom = (roomId: string) => {
+    if (isMobile) {
+      router.push(`/chat/${roomId}`);
+    } else {
+      setActiveRoomId(roomId);
+      setActiveWaterSourceId(roomId);
+    }
+  };
+
+  const currentSource = sources.find((s) => s.id === activeRoomId);
+
+  return (
+    <div className="flex w-full h-full overflow-hidden bg-white dark:bg-slate-900 border-x border-slate-200 dark:border-slate-800">
+      <ChatRoomList
+        sources={sources}
+        activeSourceId={activeRoomId}
+        onSelectRoom={handleSelectRoom}
+      />
+
+      {/* Right chat panel for desktop (Mockup 4) */}
+      <div className="hidden md:flex flex-1 flex-col h-full bg-slate-50 dark:bg-slate-950/60 overflow-hidden">
+        {/* Header */}
+        <div className="h-16 px-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300 flex items-center justify-center">
+              <Droplets className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                {currentSource?.name || "Community Discussion"}
+              </h3>
+              <span className="text-[11px] text-slate-400">
+                {currentSource?.barangay ? `Barangay ${currentSource.barangay}` : "Live Public Room"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Message Stream */}
+        <ChatMessageList messages={messages} isLoading={isLoading} />
+
+        {/* Bottom Input */}
+        <ChatInput onSendMessage={sendMessage} />
+      </div>
+    </div>
+  );
+}

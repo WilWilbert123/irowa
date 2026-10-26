@@ -1,0 +1,29 @@
+[project]
+id = "irowa"
+name = "IroWa - Irosin Water Resources Map"
+
+[api]
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+port = 54323
+
+[auth]
+site_url = "http://localhost:5000"
+additional_redirect_urls = ["http://localhost:5000/**"]
+jwt_expiry = 3600
+
+[storage]
+enabled = true
+file_size_limit = "10MiB"
+
+[realtime]
+enabled = true
+ip_version = "v4"
