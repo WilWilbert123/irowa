@@ -1,0 +1,11 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="irowa_grad" x1="12" y1="8" x2="52" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0284c7" />
+      <stop offset="0.5" stop-color="#0ea5e9" />
+      <stop offset="1" stop-color="#14b8a6" />
+    </linearGradient>
+  </defs>
+  <path d="M32 6C32 6 12 28.5 12 40C12 51.0457 20.9543 60 32 60C43.0457 60 52 51.0457 52 40C52 28.5 32 6 32 6Z" fill="url(#irowa_grad)" />
+  <path d="M25 42C25 47 28 50 33 50C38 50 40 45 38 40C36 35 30 33 27 36C25.5 37.5 25 39.5 25 42Z" fill="white" fill-opacity="0.35" />
+</svg>
