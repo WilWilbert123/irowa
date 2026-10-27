@@ -3,9 +3,10 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useVisitor } from "@/contexts/visitor-context";
-import { Droplet, MapPin, MessageSquare, ArrowRight, ShieldCheck, Compass } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -25,99 +26,83 @@ export default function WelcomePage() {
     router.push("/home");
   };
 
-  const handleSkip = () => {
-    router.push("/home");
-  };
-
   return (
-    <main className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-radial from-slate-900 via-slate-950 to-black text-white">
-      <div className="w-full max-w-md rounded-3xl bg-slate-900/80 backdrop-blur-xl border border-slate-800 p-6 sm:p-8 shadow-2xl space-y-6">
+    <main className="min-h-dvh w-full flex items-center justify-center p-4 sm:p-6 bg-radial from-slate-900 via-slate-950 to-black text-white overflow-y-auto">
+      <div className="w-full max-w-sm sm:max-w-md rounded-2xl sm:rounded-3xl bg-slate-900/85 backdrop-blur-2xl border border-slate-800/80 p-6 sm:p-8 shadow-2xl shadow-black/60 space-y-6 my-auto">
         {/* Brand header */}
         <div className="text-center space-y-2">
-          <div className="mx-auto w-16 h-16 rounded-3xl bg-gradient-to-tr from-blue-600 to-teal-400 p-0.5 shadow-lg shadow-blue-500/20 mb-3 flex items-center justify-center">
-            <div className="w-full h-full bg-slate-900 rounded-[22px] flex items-center justify-center">
+          <div className="mx-auto w-14 h-14 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl bg-gradient-to-tr from-blue-600 to-teal-400 p-0.5 shadow-lg shadow-blue-500/20 mb-3 flex items-center justify-center">
+            <div className="w-full h-full bg-slate-900 rounded-[14px] sm:rounded-[22px] flex items-center justify-center">
               <Image
                 src="/images/irowa-logo.svg"
                 alt="IroWa"
                 width={36}
                 height={36}
-                className="w-9 h-9"
+                className="w-8 h-8 sm:w-9 sm:h-9"
                 priority
               />
             </div>
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Welcome to <span className="text-blue-400">IroWa</span>
+            Welcome to{" "}
+            <span className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+              IroWa
+            </span>
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-xs mx-auto leading-relaxed">
-            Irosin Water Resources Map — Discover, share, and discuss community water points during dry spells and emergencies.
+          <p className="text-xs sm:text-sm text-slate-400 max-w-xs mx-auto">
+            Community Water Resources Map for Irosin
           </p>
         </div>
 
-        {/* Feature Highlights */}
-        <div className="grid grid-cols-3 gap-2.5 pt-2">
-          <div className="p-3 rounded-2xl bg-slate-800/50 border border-slate-800 text-center space-y-1">
-            <Compass className="h-5 w-5 text-blue-400 mx-auto" />
-            <span className="text-[10px] font-semibold text-slate-300 block">Interactive Map</span>
-          </div>
-          <div className="p-3 rounded-2xl bg-slate-800/50 border border-slate-800 text-center space-y-1">
-            <Droplet className="h-5 w-5 text-teal-400 mx-auto" />
-            <span className="text-[10px] font-semibold text-slate-300 block">Verified Status</span>
-          </div>
-          <div className="p-3 rounded-2xl bg-slate-800/50 border border-slate-800 text-center space-y-1">
-            <MessageSquare className="h-5 w-5 text-indigo-400 mx-auto" />
-            <span className="text-[10px] font-semibold text-slate-300 block">Live Chat</span>
-          </div>
-        </div>
-
-        {/* Onboarding Name Input */}
-        <form onSubmit={handleContinue} className="space-y-4 pt-2">
+        {/* Onboarding Name Form */}
+        <form onSubmit={handleContinue} className="space-y-4 pt-1">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Choose a Display Name (Optional)
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label
+                htmlFor="display-name-input"
+                className="block text-xs font-semibold text-slate-300"
+              >
+                Display Name
+              </label>
+              <span className="text-[11px] text-slate-500">Optional</span>
+            </div>
             <input
+              id="display-name-input"
               type="text"
               value={nameInput}
               onChange={(e) => {
                 setNameInput(e.target.value);
                 if (errorMsg) setErrorMsg(null);
               }}
-              placeholder="e.g. Maria S., Juan from Gabao"
+              placeholder="e.g. Maria S."
               maxLength={40}
-              className="w-full h-12 px-4 rounded-2xl bg-slate-800 border border-slate-700 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+              className="w-full h-11 sm:h-12 px-4 rounded-xl sm:rounded-2xl bg-slate-800/80 border border-slate-700 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/40 transition-colors"
             />
             {errorMsg && (
-              <span className="text-xs text-rose-400 mt-1 block">{errorMsg}</span>
+              <span className="text-xs text-rose-400 mt-1.5 block">
+                {errorMsg}
+              </span>
             )}
-            <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
-              Your name is shown when contributing reports, questions, or updates in community chat. No account password required.
-            </p>
           </div>
 
           <button
+            id="continue-button"
             type="submit"
-            className="w-full h-12 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full h-11 sm:h-12 rounded-xl sm:rounded-2xl bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white font-bold text-sm shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
-            <span>{nameInput.trim() ? "Set Name & Open Map" : "Open Map as Resident"}</span>
+            <span>{nameInput.trim() ? "Set Name & Open Map" : "Open Map"}</span>
             <ArrowRight className="h-4 w-4" />
           </button>
 
-          <button
-            type="button"
-            onClick={handleSkip}
-            className="w-full text-center text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
+          <Link
+            id="skip-link"
+            href="/home"
+            className="block w-full text-center text-xs text-slate-400 hover:text-white transition-colors py-1.5 cursor-pointer"
           >
-            Skip for now & browse anonymously
-          </button>
+            Skip for now, browse anonymously
+          </Link>
         </form>
-
-        <div className="pt-2 text-center border-t border-slate-800/60">
-          <span className="text-[11px] text-slate-500">
-            For Irosin residents, visitors, and emergency responders.
-          </span>
-        </div>
       </div>
     </main>
   );

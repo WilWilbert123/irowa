@@ -47,6 +47,8 @@ export async function getAuditLogs(): Promise<AuditLogRow[]> {
         created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
       },
     ];
+  }
+
   try {
     const admin = createAdminClient();
     const { data, error } = await admin

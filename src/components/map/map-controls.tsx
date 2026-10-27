@@ -27,7 +27,7 @@ export function MapControls({
   const [layersOpen, setLayersOpen] = useState(false);
 
   return (
-    <div className="absolute bottom-6 right-4 sm:right-6 z-[1000] flex flex-col items-center gap-2">
+    <div className="absolute bottom-20 sm:bottom-6 right-3 sm:right-6 z-[1000] flex flex-col items-center gap-2">
       {/* Tile Layer Switcher */}
       <div className="relative">
         <button
