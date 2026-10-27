@@ -224,7 +224,7 @@ INSERT INTO public.notifications (
   'New Water Source Verified',
   'Bitang Waterfall in Brgy. Liang has been officially verified and added to the IroWa interactive map.',
   'new_water_source',
-  'a11111111-1111-4111-a111-111111111111',
+  'a1111111-1111-4111-a111-111111111111',
   false
 ),
 (

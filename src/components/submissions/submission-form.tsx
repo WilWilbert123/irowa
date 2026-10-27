@@ -2,14 +2,28 @@
 "use client";
 
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useVisitor } from "@/contexts/visitor-context";
 import { submitWaterSourceAction } from "@/actions/submission-actions";
 import { uploadWaterImage } from "@/lib/supabase/storage";
 import { waterCategories, waterAvailabilityStatuses } from "@/lib/validations/water-schema";
 import { IROSIN_BARANGAYS, IROSIN_COORDINATES } from "@/lib/utils/constants";
-import { MapPin, Upload, AlertCircle, CheckCircle2, Navigation } from "lucide-react";
+import { MapPin, Upload, AlertCircle, CheckCircle2, Navigation, SlidersHorizontal } from "lucide-react";
 import { useGeolocation } from "@/hooks/use-geolocation";
+
+const LocationPickerMap = dynamic(
+  () => import("@/components/map/location-picker-map"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[340px] w-full rounded-2xl bg-slate-100 dark:bg-slate-900 animate-pulse flex flex-col items-center justify-center gap-2 border border-slate-200 dark:border-slate-700">
+        <div className="w-8 h-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+        <span className="text-xs font-semibold text-slate-400">Loading map for pin location...</span>
+      </div>
+    ),
+  }
+);
 
 export function SubmissionForm() {
   const router = useRouter();
@@ -243,50 +257,77 @@ export function SubmissionForm() {
         </div>
       </div>
 
-      {/* GPS Location Coordinates */}
+      {/* 3. Geographic Location & Pin on Map */}
       <div className="space-y-4 p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-            3. Geographic Coordinates
-          </h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-blue-500" />
+              <span>3. Pin Location on Map</span>
+              <span className="text-rose-500">*</span>
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Tap anywhere on the map or drag the pin to set the exact position.
+            </p>
+          </div>
+
           <button
             type="button"
             onClick={handleUseCurrentLocation}
             disabled={isLocating}
-            className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+            className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 text-xs font-bold text-blue-600 dark:text-blue-400 transition-colors cursor-pointer disabled:opacity-50"
           >
-            <Navigation className="h-3.5 w-3.5" />
-            <span>{isLocating ? "Locating..." : "Use My Current GPS"}</span>
+            <Navigation className={`h-3.5 w-3.5 ${isLocating ? "animate-spin text-blue-500" : ""}`} />
+            <span>{isLocating ? "Detecting GPS..." : "Use My Current GPS"}</span>
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Latitude
-            </label>
-            <input
-              type="number"
-              step="any"
-              value={latitude}
-              onChange={(e) => setLatitude(parseFloat(e.target.value))}
-              required
-              className="w-full h-11 px-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-mono focus:outline-none"
-            />
+        {/* Interactive Location Picker Map */}
+        <LocationPickerMap
+          latitude={latitude}
+          longitude={longitude}
+          onChange={(newLat, newLng) => {
+            setLatitude(newLat);
+            setLongitude(newLng);
+          }}
+        />
+
+        {/* Selected Coordinates Status & Manual Tuning */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 text-xs">
+          <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300 font-medium shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Pinned Location:</span>
+            <span className="font-mono font-bold">{latitude.toFixed(5)}° N, {longitude.toFixed(5)}° E</span>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Longitude
-            </label>
-            <input
-              type="number"
-              step="any"
-              value={longitude}
-              onChange={(e) => setLongitude(parseFloat(e.target.value))}
-              required
-              className="w-full h-11 px-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-mono focus:outline-none"
-            />
-          </div>
+
+          <details className="text-slate-500 dark:text-slate-400 group cursor-pointer self-start sm:self-auto">
+            <summary className="hover:text-blue-600 dark:hover:text-blue-400 list-none flex items-center gap-1.5 font-semibold py-1">
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              <span>Fine-tune numbers</span>
+            </summary>
+            <div className="mt-2 grid grid-cols-2 gap-3 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Latitude</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={latitude}
+                  onChange={(e) => setLatitude(parseFloat(e.target.value) || 0)}
+                  className="w-full h-9 px-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Longitude</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={longitude}
+                  onChange={(e) => setLongitude(parseFloat(e.target.value) || 0)}
+                  className="w-full h-9 px-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono focus:outline-none"
+                />
+              </div>
+            </div>
+          </details>
         </div>
       </div>
 
