@@ -102,3 +102,28 @@ export function createStartLocationIcon(isGPS: boolean = true, label?: string): 
     iconAnchor: [60, 50],
   });
 }
+
+export function createPickerMarkerIcon(label: string = "Pinned Location"): L.DivIcon {
+  return L.divIcon({
+    html: `
+      <div class="relative flex flex-col items-center select-none cursor-grab active:cursor-grabbing -translate-y-8">
+        <div class="px-2.5 py-1 rounded-full bg-blue-600 text-white font-bold text-[11px] shadow-lg whitespace-nowrap mb-1 flex items-center gap-1.5 border border-white/90 ring-2 ring-blue-500/20">
+          <span class="inline-block w-2 h-2 rounded-full bg-cyan-300 animate-pulse"></span>
+          <span>${label}</span>
+        </div>
+        <div class="relative flex items-center justify-center">
+          <div class="w-8 h-8 bg-blue-600 text-white rounded-full border-2 border-white shadow-xl flex items-center justify-center">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+          </div>
+          <div class="w-12 h-12 bg-blue-500/30 rounded-full animate-ping absolute pointer-events-none"></div>
+        </div>
+      </div>
+    `,
+    className: "location-picker-marker",
+    iconSize: [140, 70],
+    iconAnchor: [70, 62],
+  });
+}

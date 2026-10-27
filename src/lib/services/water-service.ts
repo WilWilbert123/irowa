@@ -316,13 +316,14 @@ export async function getPublishedWaterSources(filters?: Partial<WaterFilterStat
     }
 
     const { data, error } = await query;
-    if (error || !data || data.length === 0) {
-      // Return filtered mock data if database is not seeded or offline
-      return filterMockSources(MOCK_IROSIN_WATER_SOURCES, filters);
+    if (error) {
+      console.error("Supabase query error:", error);
+      return [];
     }
-    return data as WaterSourceWithPhotos[];
-  } catch {
-    return filterMockSources(MOCK_IROSIN_WATER_SOURCES, filters);
+    return (data || []) as WaterSourceWithPhotos[];
+  } catch (err) {
+    console.error("Failed to fetch water sources from Supabase:", err);
+    return [];
   }
 }
 
@@ -359,14 +360,14 @@ export async function getWaterSourceBySlug(slug: string): Promise<WaterSourceWit
       .from("water_sources")
       .select("*, photos:water_photos(*)")
       .eq("slug", slug)
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
-      return MOCK_IROSIN_WATER_SOURCES.find((s) => s.slug === slug) || null;
+      return null;
     }
     return data as WaterSourceWithPhotos;
   } catch {
-    return MOCK_IROSIN_WATER_SOURCES.find((s) => s.slug === slug) || null;
+    return null;
   }
 }
 
@@ -380,14 +381,14 @@ export async function getWaterSourceById(id: string): Promise<WaterSourceWithPho
       .from("water_sources")
       .select("*, photos:water_photos(*)")
       .eq("id", id)
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
-      return MOCK_IROSIN_WATER_SOURCES.find((s) => s.id === id) || null;
+      return null;
     }
     return data as WaterSourceWithPhotos;
   } catch {
-    return MOCK_IROSIN_WATER_SOURCES.find((s) => s.id === id) || null;
+    return null;
   }
 }
 
@@ -402,11 +403,12 @@ export async function getAllWaterSourcesAdmin(): Promise<WaterSourceWithPhotos[]
       .select("*, photos:water_photos(*)")
       .order("created_at", { ascending: false });
 
-    if (error || !data || data.length === 0) {
-      return MOCK_IROSIN_WATER_SOURCES;
+    if (error) {
+      console.error("Admin fetch error:", error);
+      return [];
     }
-    return data as WaterSourceWithPhotos[];
+    return (data || []) as WaterSourceWithPhotos[];
   } catch {
-    return MOCK_IROSIN_WATER_SOURCES;
+    return [];
   }
 }

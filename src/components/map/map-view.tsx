@@ -2,7 +2,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { MapContainer, Marker, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import { WaterSourceWithPhotos } from "@/types/water";
 import { WaterCategory } from "@/types/database.types";
@@ -27,95 +26,6 @@ interface MapViewProps {
   isEditorMode?: boolean;
   onMapClickCoordinates?: (lat: number, lng: number) => void;
   editorMarker?: { lat: number; lng: number } | null;
-}
-
-// Map Controller for imperative actions (zooming, panning, recentering) and capturing map instance
-function MapController({
-  triggerPanTo,
-  onMapInstance,
-}: {
-  triggerPanTo?: [number, number] | null;
-  onMapInstance?: (map: L.Map) => void;
-}) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (onMapInstance && map) {
-      onMapInstance(map);
-    }
-  }, [map, onMapInstance]);
-
-  useEffect(() => {
-    if (triggerPanTo && map) {
-      map.flyTo(triggerPanTo, 15, { duration: 1.2 });
-    }
-  }, [triggerPanTo, map]);
-
-  return null;
-}
-
-// Tile Layer Manager to safely add/remove tile layers imperatively via useMap without unmount collisions
-function TileLayerManager({
-  currentLayer,
-}: {
-  currentLayer: "standard" | "satellite" | "terrain";
-}) {
-  const map = useMap();
-  const layerRef = useRef<L.TileLayer | null>(null);
-
-  useEffect(() => {
-    if (!map) return;
-    const config = TILE_LAYERS[currentLayer] || TILE_LAYERS.standard;
-
-    // Clean up previous layer if exists
-    if (layerRef.current) {
-      try {
-        map.removeLayer(layerRef.current);
-      } catch {
-        // Safe cleanup
-      }
-      layerRef.current = null;
-    }
-
-    const tileLayer = L.tileLayer(config.url, {
-      attribution: config.attribution,
-      maxNativeZoom: config.maxNativeZoom,
-      maxZoom: 19,
-      subdomains: "subdomains" in config ? (config as any).subdomains : "abc",
-    });
-
-    tileLayer.addTo(map);
-    layerRef.current = tileLayer;
-
-    return () => {
-      if (layerRef.current && map) {
-        try {
-          map.removeLayer(layerRef.current);
-        } catch {
-          // Safe cleanup
-        }
-        layerRef.current = null;
-      }
-    };
-  }, [map, currentLayer]);
-
-  return null;
-}
-
-// Map Click Listener component for admin map editor
-function MapClickHandler({ onClick }: { onClick?: (lat: number, lng: number) => void }) {
-  const map = useMap();
-  useEffect(() => {
-    if (!onClick) return;
-    const handler = (e: L.LeafletMouseEvent) => {
-      onClick(e.latlng.lat, e.latlng.lng);
-    };
-    map.on("click", handler);
-    return () => {
-      map.off("click", handler);
-    };
-  }, [map, onClick]);
-  return null;
 }
 
 const TILE_LAYERS = {
@@ -154,10 +64,22 @@ export function MapView({
   const [currentLayer, setCurrentLayer] = useState<"standard" | "satellite" | "terrain">(
     preferences?.mapStyle || "satellite"
   );
-  const [flyToCoords, setFlyToCoords] = useState<[number, number] | null>(null);
   const [activeRoute, setActiveRoute] = useState<InAppRoute | null>(null);
   const [isRouting, setIsRouting] = useState(false);
+
+  // Direct Leaflet refs
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const markersGroupRef = useRef<L.LayerGroup | null>(null);
+  const routeGroupRef = useRef<L.LayerGroup | null>(null);
+  const userMarkerRef = useRef<L.Marker | null>(null);
+  const editorMarkerRef = useRef<L.Marker | null>(null);
+  const onMapClickRef = useRef(onMapClickCoordinates);
+
+  useEffect(() => {
+    onMapClickRef.current = onMapClickCoordinates;
+  }, [onMapClickCoordinates]);
 
   // Sync if preferences update from storage
   useEffect(() => {
@@ -177,14 +99,246 @@ export function MapView({
     return s.category === selectedCategory;
   });
 
+  // 1. Initialize Leaflet Map on mount
+  useEffect(() => {
+    const container = mapContainerRef.current;
+    if (!container) return;
+
+    // Clean up any existing map instance on this container
+    if (mapInstanceRef.current) {
+      try {
+        mapInstanceRef.current.remove();
+      } catch {
+        // safe ignore
+      }
+      mapInstanceRef.current = null;
+    }
+
+    // Reset Leaflet internal container tracking ID if stale
+    if ((container as any)._leaflet_id) {
+      try {
+        delete (container as any)._leaflet_id;
+      } catch {
+        // safe ignore
+      }
+    }
+
+    const map = L.map(container, {
+      center: MAP_CONFIG.center,
+      zoom: MAP_CONFIG.defaultZoom,
+      minZoom: MAP_CONFIG.minZoom,
+      maxZoom: 19,
+      zoomControl: false,
+      attributionControl: true,
+    });
+
+    const config = TILE_LAYERS[currentLayer] || TILE_LAYERS.satellite;
+    const tileLayer = L.tileLayer(config.url, {
+      attribution: config.attribution,
+      maxNativeZoom: config.maxNativeZoom,
+      maxZoom: 19,
+      subdomains: "subdomains" in config ? (config as any).subdomains : "abc",
+    }).addTo(map);
+
+    tileLayerRef.current = tileLayer;
+
+    // Layer groups for markers and routes
+    const markersGroup = L.layerGroup().addTo(map);
+    const routeGroup = L.layerGroup().addTo(map);
+
+    markersGroupRef.current = markersGroup;
+    routeGroupRef.current = routeGroup;
+    mapInstanceRef.current = map;
+
+    // Click handler for editor mode
+    map.on("click", (e: L.LeafletMouseEvent) => {
+      if (onMapClickRef.current) {
+        onMapClickRef.current(e.latlng.lat, e.latlng.lng);
+      }
+    });
+
+    // Invalidate size to ensure proper rendering after container mount
+    const timer = setTimeout(() => {
+      try {
+        map.invalidateSize();
+      } catch {
+        // safe ignore
+      }
+    }, 150);
+
+    return () => {
+      clearTimeout(timer);
+      try {
+        map.remove();
+      } catch {
+        // safe ignore
+      }
+      mapInstanceRef.current = null;
+      tileLayerRef.current = null;
+      markersGroupRef.current = null;
+      routeGroupRef.current = null;
+      userMarkerRef.current = null;
+      editorMarkerRef.current = null;
+      if (container) {
+        try {
+          delete (container as any)._leaflet_id;
+        } catch {
+          // safe ignore
+        }
+      }
+    };
+  }, []);
+
+  // 2. Tile layer updates
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    const config = TILE_LAYERS[currentLayer] || TILE_LAYERS.satellite;
+
+    if (tileLayerRef.current) {
+      try {
+        map.removeLayer(tileLayerRef.current);
+      } catch {
+        // ignore
+      }
+    }
+
+    const tileLayer = L.tileLayer(config.url, {
+      attribution: config.attribution,
+      maxNativeZoom: config.maxNativeZoom,
+      maxZoom: 19,
+      subdomains: "subdomains" in config ? (config as any).subdomains : "abc",
+    }).addTo(map);
+
+    tileLayerRef.current = tileLayer;
+  }, [currentLayer]);
+
+  // 3. Render and sync water source markers
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const group = markersGroupRef.current;
+    if (!map || !group) return;
+
+    group.clearLayers();
+
+    visibleSources.forEach((source) => {
+      const isSelected = selectedSource?.id === source.id;
+      const icon = createCategoryDivIcon(source.category, isSelected, source.availability_status);
+      const marker = L.marker([source.latitude, source.longitude], { icon });
+
+      marker.on("click", () => {
+        onSelectSource(source);
+        map.flyTo([source.latitude, source.longitude], 15, { duration: 1.0 });
+      });
+
+      marker.addTo(group);
+    });
+  }, [visibleSources, selectedSource, onSelectSource]);
+
+  // 4. User location marker
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (userMarkerRef.current) {
+      try {
+        map.removeLayer(userMarkerRef.current);
+      } catch {
+        // ignore
+      }
+      userMarkerRef.current = null;
+    }
+
+    if (location && !activeRoute) {
+      const marker = L.marker([location.lat, location.lng], {
+        icon: createLocationMarkerIcon(),
+      }).addTo(map);
+      userMarkerRef.current = marker;
+    }
+  }, [location, activeRoute]);
+
+  // 5. Admin editor marker
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (editorMarkerRef.current) {
+      try {
+        map.removeLayer(editorMarkerRef.current);
+      } catch {
+        // ignore
+      }
+      editorMarkerRef.current = null;
+    }
+
+    if (editorMarker) {
+      const marker = L.marker([editorMarker.lat, editorMarker.lng], {
+        icon: createCategoryDivIcon("Other", true, "Available"),
+      }).addTo(map);
+      editorMarkerRef.current = marker;
+    }
+  }, [editorMarker]);
+
+  // 6. Active route polylines
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const group = routeGroupRef.current;
+    if (!map || !group) return;
+
+    group.clearLayers();
+
+    if (activeRoute && activeRoute.coordinates.length > 0) {
+      // Outer glow
+      L.polyline(activeRoute.coordinates, {
+        color: "#38bdf8",
+        weight: 9,
+        opacity: 0.5,
+        lineCap: "round",
+        lineJoin: "round",
+      }).addTo(group);
+
+      // Main route
+      L.polyline(activeRoute.coordinates, {
+        color: "#0284c7",
+        weight: 5,
+        opacity: 0.95,
+        lineCap: "round",
+        lineJoin: "round",
+      }).addTo(group);
+
+      // Off-road trail
+      if (activeRoute.trailCoordinates) {
+        L.polyline(activeRoute.trailCoordinates, {
+          color: "#10b981",
+          weight: 6,
+          opacity: 1,
+          dashArray: "8, 8",
+          lineCap: "round",
+        }).addTo(group);
+      }
+
+      // Origin marker
+      const originIcon = createStartLocationIcon(
+        activeRoute.originName === "Your Location",
+        activeRoute.originName === "Your Location" ? "START: You Are Here" : "START: Irosin Proper"
+      );
+      L.marker(activeRoute.coordinates[0], { icon: originIcon }).addTo(group);
+
+      const bounds = L.latLngBounds(activeRoute.coordinates);
+      map.fitBounds(bounds, { padding: [70, 70], maxZoom: 16 });
+    }
+  }, [activeRoute]);
+
   const handleRecenter = () => {
-    setFlyToCoords(MAP_CONFIG.center);
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.flyTo(MAP_CONFIG.center, MAP_CONFIG.defaultZoom, { duration: 1.2 });
+    }
   };
 
   const handleLocateMe = async () => {
     const pos = await requestLocation();
-    if (pos) {
-      setFlyToCoords([pos.lat, pos.lng]);
+    if (pos && mapInstanceRef.current) {
+      mapInstanceRef.current.flyTo([pos.lat, pos.lng], 15, { duration: 1.2 });
     }
   };
 
@@ -204,7 +358,6 @@ export function MapView({
     setIsRouting(true);
     onSelectSource(null); // dismiss card to show route
     try {
-      // Actively request user GPS location if not already granted
       let userCoords = location;
       if (!userCoords) {
         try {
@@ -229,11 +382,6 @@ export function MapView({
       );
 
       setActiveRoute(route);
-
-      if (mapInstanceRef.current && route.coordinates.length > 0) {
-        const bounds = L.latLngBounds(route.coordinates);
-        mapInstanceRef.current.fitBounds(bounds, { padding: [70, 70], maxZoom: 16 });
-      }
     } catch (err) {
       console.error("Failed to load in-app directions", err);
     } finally {
@@ -251,117 +399,14 @@ export function MapView({
         </div>
       )}
 
-      <MapContainer
-        center={MAP_CONFIG.center}
-        zoom={MAP_CONFIG.defaultZoom}
-        minZoom={MAP_CONFIG.minZoom}
-        maxZoom={19}
+      {/* Pure Leaflet Map Container */}
+      <div
+        ref={mapContainerRef}
         className="w-full h-full z-0"
         style={{ width: "100%", height: "100%" }}
-        zoomControl={false}
-      >
-        <TileLayerManager currentLayer={currentLayer} />
+      />
 
-        <MapController
-          triggerPanTo={flyToCoords}
-          onMapInstance={(map) => {
-            mapInstanceRef.current = map;
-          }}
-        />
-
-        {isEditorMode && onMapClickCoordinates && (
-          <MapClickHandler onClick={onMapClickCoordinates} />
-        )}
-
-        {/* User Current Geolocation Pin (when not navigating) */}
-        {location && !activeRoute && (
-          <Marker
-            position={[location.lat, location.lng]}
-            icon={createLocationMarkerIcon()}
-          />
-        )}
-
-        {/* Admin Editor Marker if active */}
-        {editorMarker && (
-          <Marker
-            position={[editorMarker.lat, editorMarker.lng]}
-            icon={createCategoryDivIcon("Other", true, "Available")}
-          />
-        )}
-
-        {/* In-App Route Polyline */}
-        {activeRoute && activeRoute.coordinates.length > 0 && (
-          <>
-            {/* Outer Glow */}
-            <Polyline
-              positions={activeRoute.coordinates}
-              pathOptions={{
-                color: "#38bdf8",
-                weight: 9,
-                opacity: 0.5,
-                lineCap: "round",
-                lineJoin: "round",
-              }}
-            />
-            {/* Main Route Line (goes directly from start to destination pin) */}
-            <Polyline
-              positions={activeRoute.coordinates}
-              pathOptions={{
-                color: "#0284c7",
-                weight: 5,
-                opacity: 0.95,
-                lineCap: "round",
-                lineJoin: "round",
-              }}
-            />
-
-            {/* Special Off-Road Mountain / Foot Trail Highlight (if destination is off paved roads) */}
-            {activeRoute.trailCoordinates && (
-              <Polyline
-                positions={activeRoute.trailCoordinates}
-                pathOptions={{
-                  color: "#10b981", // Emerald green for nature/mountain foot trail
-                  weight: 6,
-                  opacity: 1,
-                  dashArray: "8, 8",
-                  lineCap: "round",
-                }}
-              />
-            )}
-
-            {/* Origin Start Point Marker with clear pulsing label */}
-            <Marker
-              position={activeRoute.coordinates[0]}
-              icon={createStartLocationIcon(
-                activeRoute.originName === "Your Location",
-                activeRoute.originName === "Your Location" ? "START: You Are Here" : "START: Irosin Proper"
-              )}
-            />
-          </>
-        )}
-
-        {/* Water Resource Markers */}
-        {visibleSources.map((source) => {
-          const isSelected = selectedSource?.id === source.id;
-          const icon = createCategoryDivIcon(source.category, isSelected, source.availability_status);
-
-          return (
-            <Marker
-              key={source.id}
-              position={[source.latitude, source.longitude]}
-              icon={icon}
-              eventHandlers={{
-                click: () => {
-                  onSelectSource(source);
-                  setFlyToCoords([source.latitude, source.longitude]);
-                },
-              }}
-            />
-          );
-        })}
-      </MapContainer>
-
-      {/* Floating Category Filter (Mockup 1) */}
+      {/* Floating Category Filter */}
       {!isEditorMode && !activeRoute && (
         <MapCategoryFilter
           selectedCategory={selectedCategory}
@@ -389,7 +434,7 @@ export function MapView({
         />
       )}
 
-      {/* Selected Marker Popup Card (Mockups 1, 2, 5) */}
+      {/* Selected Marker Popup Card */}
       {selectedSource && !activeRoute && (
         <MarkerPopupCard
           source={selectedSource}
