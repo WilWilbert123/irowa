@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Polyline, useMap } from "react-leaflet";
+import { MapContainer, Marker, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import { WaterSourceWithPhotos } from "@/types/water";
 import { WaterCategory } from "@/types/database.types";
@@ -29,23 +29,75 @@ interface MapViewProps {
   editorMarker?: { lat: number; lng: number } | null;
 }
 
-// Map Controller for imperative actions (zooming, panning, recentering)
+// Map Controller for imperative actions (zooming, panning, recentering) and capturing map instance
 function MapController({
-  center,
-  zoom,
   triggerPanTo,
+  onMapInstance,
 }: {
-  center: [number, number];
-  zoom: number;
   triggerPanTo?: [number, number] | null;
+  onMapInstance?: (map: L.Map) => void;
 }) {
   const map = useMap();
 
   useEffect(() => {
-    if (triggerPanTo) {
+    if (onMapInstance && map) {
+      onMapInstance(map);
+    }
+  }, [map, onMapInstance]);
+
+  useEffect(() => {
+    if (triggerPanTo && map) {
       map.flyTo(triggerPanTo, 15, { duration: 1.2 });
     }
   }, [triggerPanTo, map]);
+
+  return null;
+}
+
+// Tile Layer Manager to safely add/remove tile layers imperatively via useMap without unmount collisions
+function TileLayerManager({
+  currentLayer,
+}: {
+  currentLayer: "standard" | "satellite" | "terrain";
+}) {
+  const map = useMap();
+  const layerRef = useRef<L.TileLayer | null>(null);
+
+  useEffect(() => {
+    if (!map) return;
+    const config = TILE_LAYERS[currentLayer] || TILE_LAYERS.standard;
+
+    // Clean up previous layer if exists
+    if (layerRef.current) {
+      try {
+        map.removeLayer(layerRef.current);
+      } catch {
+        // Safe cleanup
+      }
+      layerRef.current = null;
+    }
+
+    const tileLayer = L.tileLayer(config.url, {
+      attribution: config.attribution,
+      maxNativeZoom: config.maxNativeZoom,
+      maxZoom: 19,
+      subdomains: "subdomains" in config ? (config as any).subdomains : "abc",
+    });
+
+    tileLayer.addTo(map);
+    layerRef.current = tileLayer;
+
+    return () => {
+      if (layerRef.current && map) {
+        try {
+          map.removeLayer(layerRef.current);
+        } catch {
+          // Safe cleanup
+        }
+        layerRef.current = null;
+      }
+    };
+  }, [map, currentLayer]);
 
   return null;
 }
@@ -205,20 +257,17 @@ export function MapView({
         minZoom={MAP_CONFIG.minZoom}
         maxZoom={19}
         className="w-full h-full z-0"
+        style={{ width: "100%", height: "100%" }}
         zoomControl={false}
-        ref={(map) => {
-          if (map) mapInstanceRef.current = map;
-        }}
       >
-        <TileLayer
-          key={currentLayer}
-          url={TILE_LAYERS[currentLayer].url}
-          attribution={TILE_LAYERS[currentLayer].attribution}
-          maxNativeZoom={TILE_LAYERS[currentLayer].maxNativeZoom}
-          maxZoom={19}
-        />
+        <TileLayerManager currentLayer={currentLayer} />
 
-        <MapController center={MAP_CONFIG.center} zoom={MAP_CONFIG.defaultZoom} triggerPanTo={flyToCoords} />
+        <MapController
+          triggerPanTo={flyToCoords}
+          onMapInstance={(map) => {
+            mapInstanceRef.current = map;
+          }}
+        />
 
         {isEditorMode && onMapClickCoordinates && (
           <MapClickHandler onClick={onMapClickCoordinates} />

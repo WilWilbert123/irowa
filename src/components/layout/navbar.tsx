@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Search, ShieldAlert, Bell, User, Menu, X, PlusCircle } from "lucide-react";
+import { Search, Bell, Menu, X, PlusCircle } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
 import { useVisitor } from "@/contexts/visitor-context";
 import { useNotifications } from "@/contexts/notification-context";
@@ -97,21 +97,6 @@ export function Navbar({ onSearchChange, searchValue = "", showSearch = true }: 
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}
-          </Link>
-
-          {/* Admin / Profile badge matching Mockup */}
-          <Link
-            href="/admin/login"
-            className="flex items-center gap-2 pl-2 pr-3 py-1 rounded-full border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors text-xs text-slate-700 dark:text-slate-200"
-            title="Administrator Access"
-          >
-            <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300">
-              <User className="h-4 w-4" />
-            </div>
-            <div className="hidden lg:flex flex-col text-left">
-              <span className="font-semibold text-xs leading-none">Admin</span>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Portal</span>
-            </div>
           </Link>
 
           {/* Mobile menu trigger */}
