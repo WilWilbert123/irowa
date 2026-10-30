@@ -31,17 +31,15 @@ export default function WelcomePage() {
       <div className="w-full max-w-sm sm:max-w-md rounded-2xl sm:rounded-3xl bg-slate-900/85 backdrop-blur-2xl border border-slate-800/80 p-6 sm:p-8 shadow-2xl shadow-black/60 space-y-6 my-auto">
         {/* Brand header */}
         <div className="text-center space-y-2">
-          <div className="mx-auto w-14 h-14 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl bg-gradient-to-tr from-blue-600 to-teal-400 p-0.5 shadow-lg shadow-blue-500/20 mb-3 flex items-center justify-center">
-            <div className="w-full h-full bg-slate-900 rounded-[14px] sm:rounded-[22px] flex items-center justify-center">
-              <Image
-                src="/images/irowa-logo.svg"
-                alt="IroWa"
-                width={36}
-                height={36}
-                className="w-8 h-8 sm:w-9 sm:h-9"
-                priority
-              />
-            </div>
+          <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl flex items-center justify-center mb-3">
+            <Image
+              src="/images/irowalogo.png"
+              alt="IroWa"
+              width={72}
+              height={72}
+              className="w-full h-full object-contain"
+              priority
+            />
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">

@@ -31,7 +31,7 @@ export default function WaterSourcesPage() {
       <Navbar onSearchChange={setSearchQuery} searchValue={filters.searchQuery} />
       <div className="flex flex-1 min-h-0 w-full overflow-hidden">
         <Sidebar />
-        <main className="flex-1 min-w-0 h-full overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6 pb-28 md:pb-12">
+        <main className="flex-1 min-w-0 h-full overflow-y-auto p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-4 sm:space-y-6 pb-28 md:pb-12">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>

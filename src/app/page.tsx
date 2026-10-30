@@ -1,33 +1,37 @@
 // src/app/page.tsx
-"use client";
+import type { Metadata } from "next";
+import { PromotionalView } from "@/components/promotional/promotional-view";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useVisitor } from "@/contexts/visitor-context";
+export const metadata: Metadata = {
+  title: "IroWa — Discover. Share. Be Prepared. | Irosin Water Resources Map",
+  description:
+    "Find and explore water resources in Irosin, Sorsogon. From natural springs to resorts, IroWa helps you stay informed, connected, and ready — especially during droughts and emergencies.",
+  openGraph: {
+    title: "IroWa — Discover. Share. Be Prepared.",
+    description:
+      "Find and explore water resources in Irosin, Sorsogon. From natural springs to resorts, IroWa helps you stay informed, connected, and ready.",
+    url: "/",
+    siteName: "IroWa",
+    images: [
+      {
+        url: "/images/promo-poster.jpg",
+        width: 800,
+        height: 600,
+        alt: "IroWa Irosin Water Resources Map",
+      },
+    ],
+    locale: "en_PH",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "IroWa — Discover. Share. Be Prepared.",
+    description:
+      "Find and explore water resources in Irosin, Sorsogon. From natural springs to resorts, IroWa helps you stay informed, connected, and ready.",
+    images: ["/images/promo-poster.jpg"],
+  },
+};
 
-export default function RootPage() {
-  const router = useRouter();
-  const { visitor, isInitialized } = useVisitor();
-
-  useEffect(() => {
-    if (!isInitialized) return;
-
-    // If visitor already set a name or visited before, go to /home
-    if (visitor?.displayName && visitor.displayName.trim().length > 0) {
-      router.replace("/home");
-    } else {
-      router.replace("/welcome");
-    }
-  }, [isInitialized, visitor, router]);
-
-  return (
-    <div className="flex h-screen w-screen items-center justify-center bg-slate-900 text-white">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs font-semibold tracking-wider text-slate-400">
-          Entering IroWa...
-        </span>
-      </div>
-    </div>
-  );
+export default function RootLandingPage() {
+  return <PromotionalView />;
 }

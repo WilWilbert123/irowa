@@ -5,8 +5,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { waterSourceSchema } from "@/lib/validations/water-schema";
 import { slugify } from "@/lib/utils/formatters";
 import { logAdminAction } from "@/lib/services/audit-service";
-import { getWaterSourceById, getPublishedWaterSources } from "@/lib/services/water-service";
+import { getWaterSourceById, getPublishedWaterSources, getAllWaterSourcesAdmin } from "@/lib/services/water-service";
 import { revalidatePath } from "next/cache";
+
+export async function getAllWaterSourcesAction() {
+  return await getAllWaterSourcesAdmin();
+}
 
 export async function getWaterSourceByIdAction(id: string) {
   return await getWaterSourceById(id);

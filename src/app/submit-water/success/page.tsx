@@ -1,16 +1,16 @@
 // src/app/submit-water/success/page.tsx
 import React from "react";
 import Link from "next/link";
-import { CheckCircle2, MapPin, Compass, ArrowRight } from "lucide-react";
+import { CheckCircle2, Compass } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { BottomNav } from "@/components/layout/bottom-nav";
 
 export default function SubmissionSuccessPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="flex flex-col h-full w-full overflow-hidden bg-slate-50 dark:bg-slate-950">
       <Navbar showSearch={false} />
-      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 pb-24 md:pb-8">
-        <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 shadow-xl text-center space-y-6">
+      <main className="flex-1 min-w-0 h-full overflow-y-auto flex items-center justify-center p-4 sm:p-6 pb-28 md:pb-12">
+        <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-xl text-center space-y-6 my-auto">
           <div className="mx-auto w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500 flex items-center justify-center shadow-xs">
             <CheckCircle2 className="h-10 w-10" />
           </div>
@@ -20,7 +20,7 @@ export default function SubmissionSuccessPage() {
               Submission Received!
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              Thank you for contributing to IroWa. Your suggested water source has entered the review queue. Local municipal authorities and community moderators will verify the coordinates before publishing it on the live map.
+              Thank you for contributing to IroWa. Your suggested water source has entered the verification queue. Local municipal authorities and moderators will check the coordinates before publishing it on the live map.
             </p>
           </div>
 

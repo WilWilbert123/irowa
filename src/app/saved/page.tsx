@@ -18,7 +18,7 @@ export default function SavedWaterPage() {
       <Navbar showSearch={false} />
       <div className="flex flex-1 min-h-0 w-full overflow-hidden">
         <Sidebar />
-        <main className="flex-1 min-w-0 h-full overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6 pb-28 md:pb-12">
+        <main className="flex-1 min-w-0 h-full overflow-y-auto p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-4 sm:space-y-6 pb-28 md:pb-12">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
               <Bookmark className="h-4 w-4" />

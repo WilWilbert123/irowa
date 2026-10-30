@@ -39,11 +39,11 @@ export function Navbar({ onSearchChange, searchValue = "", showSearch = true }: 
         <Link href="/home" className="flex items-center gap-2.5 shrink-0 focus-visible:outline-none">
           <div className="relative w-8 h-8 flex items-center justify-center">
             <Image
-              src="/images/irowa-logo.svg"
+              src="/images/irowalogo.png"
               alt="IroWa Logo"
               width={32}
               height={32}
-              className="w-8 h-8"
+              className="w-8 h-8 object-contain"
               priority
             />
           </div>

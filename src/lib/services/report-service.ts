@@ -122,12 +122,14 @@ export async function getReportsAdmin(): Promise<WaterReportWithDetails[]> {
       .select("*, water_source:water_sources(id, name, category, barangay)")
       .order("created_at", { ascending: false });
 
-    if (error || !data || data.length === 0) {
-      return MOCK_REPORTS;
+    if (error) {
+      console.error("Failed to fetch reports from Supabase:", error);
+      return [];
     }
-    return data as WaterReportWithDetails[];
-  } catch {
-    return MOCK_REPORTS;
+    return (data || []) as WaterReportWithDetails[];
+  } catch (err) {
+    console.error("Failed to load reports:", err);
+    return [];
   }
 }
 

@@ -5,7 +5,7 @@ const STATIC_ASSETS = [
   "/home",
   "/offline",
   "/manifest.json",
-  "/images/irowa-logo.svg",
+  "/images/irowalogo.png",
   "/images/water-illustration.svg",
   "/images/irosin-map-placeholder.png",
 ];
@@ -73,8 +73,8 @@ self.addEventListener("push", (event) => {
 
   const options = {
     body: data.body,
-    icon: "/images/irowa-logo.svg",
-    badge: "/images/irowa-logo.svg",
+    icon: "/images/irowalogo.png",
+    badge: "/images/irowalogo.png",
     vibrate: [100, 50, 100],
     data: {
       url: data.url || "/home",

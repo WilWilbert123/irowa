@@ -41,9 +41,12 @@ export async function approveSubmissionAction(submissionId: string) {
   return result;
 }
 
-export async function rejectSubmissionAction(submissionId: string, reason: string) {
+export async function rejectSubmissionAction(
+  submissionId: string,
+  reason: string
+): Promise<{ success: boolean; error?: string }> {
   if (!reason || reason.trim().length < 3) {
-    return { error: "Please provide a valid rejection reason (at least 3 characters)." };
+    return { success: false, error: "Please provide a valid rejection reason (at least 3 characters)." };
   }
   const result = await rejectSubmission(submissionId, reason);
   if (result.success) {
