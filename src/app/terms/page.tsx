@@ -7,11 +7,11 @@ import { FileText } from "lucide-react";
 
 export default function TermsPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="flex flex-col h-full w-full overflow-hidden bg-slate-50 dark:bg-slate-950">
       <Navbar showSearch={false} />
-      <div className="flex flex-1">
+      <div className="flex flex-1 min-h-0 w-full overflow-hidden">
         <Sidebar />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto w-full space-y-6 pb-24 md:pb-8">
+        <main className="flex-1 min-w-0 h-full overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto w-full space-y-6 pb-28 md:pb-12">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
               <FileText className="h-4 w-4" />
@@ -38,7 +38,7 @@ export default function TermsPage() {
 
             <h2 className="text-base font-bold text-slate-900 dark:text-white">3. Disclaimers of Water Safety</h2>
             <p>
-              IroWa indexes locations and reported flow status. Listing does not guarantee that untreated surface or spring water meets national microbiological drinking water standards.
+              IroWa indexes locations and reported flow status. Listing does not guarantee that untreated surface or spring water meets national microbiological drinking water standards. Always boil or filter natural water before drinking.
             </p>
           </div>
         </main>

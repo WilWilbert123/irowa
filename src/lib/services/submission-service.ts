@@ -135,12 +135,14 @@ export async function getSubmissionsAdmin(): Promise<WaterSubmissionWithPhotos[]
       .select("*, photos:submission_photos(*)")
       .order("created_at", { ascending: false });
 
-    if (error || !data || data.length === 0) {
-      return MOCK_SUBMISSIONS;
+    if (error) {
+      console.error("Failed to fetch submissions from Supabase:", error);
+      return [];
     }
-    return data as WaterSubmissionWithPhotos[];
-  } catch {
-    return MOCK_SUBMISSIONS;
+    return (data || []) as WaterSubmissionWithPhotos[];
+  } catch (err) {
+    console.error("Failed to load submissions:", err);
+    return [];
   }
 }
 

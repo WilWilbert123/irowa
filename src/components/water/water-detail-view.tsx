@@ -130,17 +130,17 @@ export function WaterDetailView({ source }: WaterDetailViewProps) {
           </div>
 
           {/* Quick Action Links */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
             <Link
               href={`/home?selected=${source.id}`}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-colors shadow-sm"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm transition-colors shadow-sm whitespace-nowrap"
             >
               <Navigation className="h-4 w-4" />
               <span>In-App Directions</span>
             </Link>
             <Link
               href={`/chat/${source.id}`}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 font-semibold text-sm hover:bg-teal-100 dark:hover:bg-teal-900/40 transition-colors"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 font-semibold text-xs sm:text-sm hover:bg-teal-100 dark:hover:bg-teal-900/40 transition-colors whitespace-nowrap"
             >
               <MessageSquare className="h-4 w-4" />
               <span>Group Chat</span>

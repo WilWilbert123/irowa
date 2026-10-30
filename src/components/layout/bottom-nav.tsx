@@ -14,8 +14,8 @@ export function BottomNav() {
   const { unreadCount } = useNotifications();
   const [moreDrawerOpen, setMoreDrawerOpen] = useState(false);
 
-  // If in admin dashboard, don't show public bottom nav
-  if (pathname.startsWith("/admin")) return null;
+  // If in admin dashboard or inside a specific chat conversation, don't show public bottom nav
+  if (pathname.startsWith("/admin") || (pathname.startsWith("/chat/") && pathname !== "/chat")) return null;
 
   const isMapActive = pathname === "/home" || pathname === "/" || pathname === "/map";
   const isWaterActive = pathname.startsWith("/water");

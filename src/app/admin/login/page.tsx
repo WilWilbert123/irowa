@@ -42,18 +42,20 @@ export default function AdminLoginPage() {
     }
   };
 
-  const handleFillDemo = () => {
-    setEmail("admin@irowa.local");
-    setPassword("irowa123456");
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-slate-950 text-white relative">
       <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-slate-800 p-8 shadow-2xl space-y-6">
         {/* Brand */}
         <div className="text-center space-y-2">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center mb-3">
-            <Lock className="h-6 w-6 text-blue-400" />
+          <div className="mx-auto w-16 h-16 rounded-2xl flex items-center justify-center mb-2">
+            <Image
+              src="/images/irowalogo.png"
+              alt="IroWa Logo"
+              width={64}
+              height={64}
+              className="w-full h-full object-contain"
+              priority
+            />
           </div>
           <h1 className="text-2xl font-black tracking-tight text-white">
             IroWa Administrator
@@ -113,20 +115,6 @@ export default function AdminLoginPage() {
             {isLoading ? "Authenticating..." : "Sign In to Admin Portal"}
           </button>
         </form>
-
-          <div className="relative flex py-1 items-center">
-            <div className="flex-grow border-t border-slate-800"></div>
-            <span className="flex-shrink mx-3 text-[10px] text-slate-500 uppercase font-semibold tracking-wider">Design Preview</span>
-            <div className="flex-grow border-t border-slate-800"></div>
-          </div>
-
-          {/* Instant Design Preview Button - No password needed */}
-          <Link
-            href="/admin"
-            className="w-full h-11 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <span>View Admin Dashboard (No Password Needed)</span>
-          </Link>
 
         <div className="text-center pt-2 border-t border-slate-800">
           <Link

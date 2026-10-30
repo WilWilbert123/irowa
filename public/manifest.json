@@ -8,9 +8,9 @@
   "theme_color": "#0284c7",
   "icons": [
     {
-      "src": "/images/irowa-logo.svg",
+      "src": "/images/irowalogo.png",
       "sizes": "192x192 512x512",
-      "type": "image/svg+xml"
+      "type": "image/png"
     }
   ]
 }

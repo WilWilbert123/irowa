@@ -3,6 +3,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { VisitorProfile, VisitorPreferences } from "@/types/visitor";
+import { recordVisitorSessionAction } from "@/actions/visitor-actions";
 
 interface VisitorContextType {
   visitor: VisitorProfile | null;
@@ -33,10 +34,12 @@ export function VisitorProvider({ children }: { children: React.ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
+    let resolvedVisitor: VisitorProfile | null = null;
     try {
       const storedVisitor = localStorage.getItem(STORAGE_KEY_VISITOR);
       if (storedVisitor) {
-        setVisitor(JSON.parse(storedVisitor));
+        resolvedVisitor = JSON.parse(storedVisitor);
+        setVisitor(resolvedVisitor);
       } else {
         // Generate anonymous visitor profile
         const newVisitor: VisitorProfile = {
@@ -44,6 +47,7 @@ export function VisitorProvider({ children }: { children: React.ReactNode }) {
           displayName: "",
           createdAt: new Date().toISOString(),
         };
+        resolvedVisitor = newVisitor;
         setVisitor(newVisitor);
         localStorage.setItem(STORAGE_KEY_VISITOR, JSON.stringify(newVisitor));
       }
@@ -59,19 +63,25 @@ export function VisitorProvider({ children }: { children: React.ReactNode }) {
         displayName: "",
         createdAt: new Date().toISOString(),
       };
+      resolvedVisitor = fallbackVisitor;
       setVisitor(fallbackVisitor);
     } finally {
       setIsInitialized(true);
+      if (resolvedVisitor?.visitorId) {
+        recordVisitorSessionAction(resolvedVisitor.visitorId, resolvedVisitor.displayName).catch(() => {});
+      }
     }
   }, []);
 
   const setDisplayName = (name: string) => {
     if (!visitor) return;
-    const updated = { ...visitor, displayName: name.trim() };
+    const trimmed = name.trim();
+    const updated = { ...visitor, displayName: trimmed };
     setVisitor(updated);
     try {
       localStorage.setItem(STORAGE_KEY_VISITOR, JSON.stringify(updated));
     } catch {}
+    recordVisitorSessionAction(visitor.visitorId, trimmed).catch(() => {});
   };
 
   const toggleSavedSource = (sourceId: string) => {

@@ -56,11 +56,14 @@ export default function AdminSubmissionDetailPage() {
     setError(null);
     try {
       const res = await approveSubmissionAction(submissionId);
-      alert("Submission approved and published successfully!");
-      if (res.publishedSourceId) {
-        router.push(`/admin/water-sources/${res.publishedSourceId}`);
+      if (res.success) {
+        if (res.publishedSourceId) {
+          router.push(`/admin/water-sources/${res.publishedSourceId}`);
+        } else {
+          router.push("/admin/submissions");
+        }
       } else {
-        router.push("/admin/submissions");
+        setError(res.error || "Approval failed");
       }
     } catch (err) {
       setError((err as Error).message || "Approval failed");
@@ -77,9 +80,12 @@ export default function AdminSubmissionDetailPage() {
     setIsProcessing(true);
     setError(null);
     try {
-      await rejectSubmissionAction(submissionId, rejectionReason);
-      alert("Submission rejected.");
-      router.push("/admin/submissions");
+      const res = await rejectSubmissionAction(submissionId, rejectionReason);
+      if (res.success) {
+        router.push("/admin/submissions");
+      } else {
+        setError(res.error || "Rejection failed");
+      }
     } catch (err) {
       setError((err as Error).message || "Rejection failed");
     } finally {

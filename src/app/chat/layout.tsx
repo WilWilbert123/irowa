@@ -10,11 +10,11 @@ export default function ChatLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
+    <div className="flex flex-col h-dvh w-full overflow-hidden bg-slate-50 dark:bg-slate-950">
       <Navbar showSearch={false} />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 flex overflow-hidden">{children}</main>
+        <main className="flex-1 min-h-0 flex overflow-hidden">{children}</main>
       </div>
       <BottomNav />
     </div>

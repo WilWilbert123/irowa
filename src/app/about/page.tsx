@@ -1,29 +1,42 @@
 // src/app/about/page.tsx
 import React from "react";
+import Image from "next/image";
 import { Navbar } from "@/components/layout/navbar";
 import { Sidebar } from "@/components/layout/sidebar";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { Droplets, Shield, Heart, MapPin, Compass } from "lucide-react";
+import { Droplets, Shield, Heart, Compass } from "lucide-react";
 import Link from "next/link";
 
 export default function AboutPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="flex flex-col h-full w-full overflow-hidden bg-slate-50 dark:bg-slate-950">
       <Navbar showSearch={false} />
-      <div className="flex flex-1">
+      <div className="flex flex-1 min-h-0 w-full overflow-hidden">
         <Sidebar />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto w-full space-y-6 pb-24 md:pb-8">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
-              <Droplets className="h-4 w-4" />
-              <span>Civic Information Platform</span>
+        <main className="flex-1 min-w-0 h-full overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto w-full space-y-6 pb-28 md:pb-12">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-2xl flex items-center justify-center overflow-hidden">
+              <Image
+                src="/images/irowalogo.png"
+                alt="IroWa"
+                width={64}
+                height={64}
+                className="w-full h-full object-contain"
+                priority
+              />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-              About IroWa
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Irosin Water Resources Map — A digital community initiative for water discovery and drought resilience.
-            </p>
+            <div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
+                <Droplets className="h-4 w-4" />
+                <span>Civic Information Platform</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                About IroWa
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                Irosin Water Resources Map — A digital community initiative for water discovery and drought resilience.
+              </p>
+            </div>
           </div>
 
           <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-6 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">

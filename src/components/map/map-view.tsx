@@ -129,7 +129,7 @@ export function MapView({
       minZoom: MAP_CONFIG.minZoom,
       maxZoom: 19,
       zoomControl: false,
-      attributionControl: true,
+      attributionControl: false,
     });
 
     const config = TILE_LAYERS[currentLayer] || TILE_LAYERS.satellite;

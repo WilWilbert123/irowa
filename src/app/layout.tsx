@@ -5,13 +5,18 @@ import { AnnouncementBanner } from "@/components/notifications/announcement-bann
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:5001"),
   title: "IroWa — Irosin Water Resources Map",
   description:
     "Discover, share, and discuss verified water sources across Irosin, Sorsogon during El Niño, drought, and daily needs.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/images/irowa-logo.svg",
-    apple: "/images/irowa-logo.svg",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/images/irowalogo.png", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/images/irowalogo.png",
   },
 };
 

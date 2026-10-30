@@ -12,6 +12,9 @@ export interface AdminDashboardMetrics {
   pendingSubmissionsCount: number;
   pendingReportsCount: number;
   totalChatMessages: number;
+  totalSubmissionsCount?: number;
+  totalReportsCount?: number;
+  activeVisitorsCount?: number;
   recentActivity: Array<{
     id: string;
     title: string;
