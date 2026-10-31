@@ -81,7 +81,7 @@ export function ChatInput({ onSendMessage, disabled }: ChatInputProps) {
           <button
             type="submit"
             disabled={!text.trim() || disabled || isSubmitting}
-            className="w-10 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white flex items-center justify-center shrink-0 transition-all shadow-xs cursor-pointer"
+            className="w-10 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 disabled:opacity-40 text-white flex items-center justify-center shrink-0 transition-all duration-150 ease-out shadow-xs cursor-pointer select-none"
             aria-label="Send message"
           >
             <SendHorizontal className="h-4 w-4" />

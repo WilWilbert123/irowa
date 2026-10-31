@@ -202,13 +202,13 @@ export function MarkerPopupCard({
         <div className="grid grid-cols-2 gap-3 pt-2">
           <Link
             href={`/water/${source.slug}`}
-            className="flex items-center justify-center gap-2 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors shadow-xs"
+            className="flex items-center justify-center gap-2 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-semibold transition-all duration-150 ease-out shadow-xs select-none"
           >
             <span>View Details</span>
           </Link>
           <button
             onClick={handleDirections}
-            className="flex items-center justify-center gap-2 h-10 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100/70 text-xs font-semibold transition-colors cursor-pointer"
+            className="flex items-center justify-center gap-2 h-10 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100/70 active:scale-95 text-xs font-semibold transition-all duration-150 ease-out cursor-pointer select-none"
           >
             <Navigation className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
             <span>Get Directions</span>
@@ -219,28 +219,28 @@ export function MarkerPopupCard({
         <div className="flex items-center justify-around pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400">
           <button
             onClick={() => toggleSavedSource(source.id)}
-            className="flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 active:scale-90 transition-all duration-150 cursor-pointer select-none"
           >
             <Bookmark className={cn("h-4 w-4", saved ? "fill-blue-500 text-blue-500" : "")} />
             <span>{saved ? "Saved" : "Save"}</span>
           </button>
           <button
             onClick={handleShare}
-            className="flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 active:scale-90 transition-all duration-150 cursor-pointer select-none"
           >
             <Share2 className="h-4 w-4" />
             <span>Share</span>
           </button>
           <Link
             href={`/report/${source.id}`}
-            className="flex items-center gap-1.5 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+            className="flex items-center gap-1.5 hover:text-rose-600 dark:hover:text-rose-400 active:scale-90 transition-all duration-150 select-none"
           >
             <AlertTriangle className="h-4 w-4" />
             <span>Report</span>
           </Link>
           <Link
             href={`/chat/${source.id}`}
-            className="flex items-center gap-1.5 hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+            className="flex items-center gap-1.5 hover:text-teal-600 dark:hover:text-teal-400 active:scale-90 transition-all duration-150 select-none"
           >
             <MessageSquare className="h-4 w-4" />
             <span>Chat</span>

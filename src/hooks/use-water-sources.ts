@@ -1,12 +1,15 @@
 // src/hooks/use-water-sources.ts
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { WaterSourceWithPhotos, WaterFilterState } from "@/types/water";
 import { getPublishedWaterSources } from "@/lib/services/water-service";
 import { calculateDistanceKm } from "@/lib/map/map-utils";
 import { useGeolocation } from "./use-geolocation";
-
+import {
+  saveWaterSourcesToOfflineDB,
+  getWaterSourcesFromOfflineDB,
+} from "@/lib/storage/offline-db";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export function useWaterSources(filters?: Partial<WaterFilterState>) {
@@ -14,29 +17,71 @@ export function useWaterSources(filters?: Partial<WaterFilterState>) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { location } = useGeolocation();
+  const hasInitializedFromCache = useRef(false);
+
+  // 1. Instant Cache-First load from Offline DB (Eliminates lag on startup)
+  useEffect(() => {
+    if (hasInitializedFromCache.current) return;
+    hasInitializedFromCache.current = true;
+
+    async function loadOfflineCache() {
+      try {
+        const cached = await getWaterSourcesFromOfflineDB();
+        if (cached && cached.length > 0) {
+          setSources(cached);
+          setIsLoading(false);
+        }
+      } catch {
+        // Cache miss, will load from network
+      }
+    }
+    loadOfflineCache();
+  }, []);
 
   const loadSources = useCallback(async () => {
-    setIsLoading(true);
     setError(null);
     try {
       const data = await getPublishedWaterSources(filters);
-      // Augment with distance if user location is available
-      if (location) {
-        const withDistance = data.map((source) => ({
-          ...source,
-          distance_km: calculateDistanceKm(
-            location.lat,
-            location.lng,
-            source.latitude,
-            source.longitude
-          ),
-        }));
-        setSources(withDistance);
+
+      if (data && data.length > 0) {
+        // Automatically save to local offline DB for lag-free offline usage
+        saveWaterSourcesToOfflineDB(data);
+
+        // Augment with distance if user location is available
+        if (location) {
+          const withDistance = data.map((source) => ({
+            ...source,
+            distance_km: calculateDistanceKm(
+              location.lat,
+              location.lng,
+              source.latitude,
+              source.longitude
+            ),
+          }));
+          setSources(withDistance);
+        } else {
+          setSources(data);
+        }
       } else {
-        setSources(data);
+        // If network returns empty or offline, check if we have cached sources
+        const cached = await getWaterSourcesFromOfflineDB();
+        if (cached.length > 0) {
+          setSources(cached);
+        }
       }
     } catch (err: any) {
-      setError(err.message || "Failed to load water sources");
+      // Offline fallback: load from offline DB
+      try {
+        const cached = await getWaterSourcesFromOfflineDB();
+        if (cached.length > 0) {
+          setSources(cached);
+          setError(null);
+        } else {
+          setError(err.message || "Failed to load water sources");
+        }
+      } catch {
+        setError(err.message || "Failed to load water sources");
+      }
     } finally {
       setIsLoading(false);
     }
