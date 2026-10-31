@@ -155,8 +155,6 @@ export default function ProfilePage() {
               <Link href="/terms" className="hover:underline">Community Terms</Link>
               <span>•</span>
               <Link href="/privacy" className="hover:underline">Privacy Policy</Link>
-              <span>•</span>
-              <Link href="/admin/login" className="hover:underline text-slate-400">Admin Control Center</Link>
             </div>
           </div>
         </main>

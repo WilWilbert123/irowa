@@ -53,11 +53,6 @@ export default function WaterChatPage({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <div className="hidden xs:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Live</span>
-          </div>
-
           {source && (
             <Link
               href={`/water/${source.slug}`}

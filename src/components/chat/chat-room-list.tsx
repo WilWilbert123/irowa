@@ -34,26 +34,15 @@ export function ChatRoomList({ activeSourceId, onSelectRoom }: ChatRoomListProps
 
   return (
     <div className="w-full md:w-88 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col h-full overflow-hidden">
-      {/* Header with Live Status Indicator */}
+      {/* Header */}
       <div className="p-3.5 sm:p-4 border-b border-slate-100 dark:border-slate-800 space-y-3 shrink-0">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-extrabold text-lg text-slate-900 dark:text-white leading-tight">
-              Community Chat
-            </h2>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              Live updates & water point discussions in Irosin
-            </p>
-          </div>
-
-          {/* Real-time Indicator Badge */}
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/60 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold shrink-0">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-            </span>
-            <span>Real-time</span>
-          </div>
+        <div>
+          <h2 className="font-extrabold text-lg text-slate-900 dark:text-white leading-tight">
+            Community Chat
+          </h2>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+            Water point discussions across Irosin
+          </p>
         </div>
 
         {/* Search Bar */}

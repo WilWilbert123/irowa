@@ -270,15 +270,6 @@ export function BottomNav() {
                 >
                   Terms
                 </Link>
-                <span>•</span>
-                <Link
-                  href="/admin/login"
-                  onClick={() => setMoreDrawerOpen(false)}
-                  className="flex items-center gap-1 text-slate-600 dark:text-slate-300 font-semibold hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                >
-                  <Lock className="h-3 w-3" />
-                  <span>Admin</span>
-                </Link>
               </div>
 
               <p className="text-[10px] text-center text-slate-400 dark:text-slate-500">
