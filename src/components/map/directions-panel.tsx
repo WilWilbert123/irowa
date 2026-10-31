@@ -49,7 +49,7 @@ export function DirectionsPanel({ route, onClose, isMobile = false }: Directions
         </button>
       </div>
 
-      {/* Summary Metrics (Distance & Duration) */}
+
       <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 mb-3 border border-slate-100 dark:border-slate-800 text-xs">
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-emerald-500 shrink-0" />
