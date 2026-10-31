@@ -86,7 +86,7 @@ export async function getChatRoomForWaterSource(waterSourceId: string): Promise<
 
 export async function getChatMessages(waterSourceId: string, limit: number = 50): Promise<ChatMessageRow[]> {
   if (!isSupabaseConfigured()) {
-    return MOCK_CHAT_MESSAGES[waterSourceId] || [];
+    return [];
   }
   try {
     const roomId = await getChatRoomForWaterSource(waterSourceId);
@@ -99,12 +99,12 @@ export async function getChatMessages(waterSourceId: string, limit: number = 50)
       .order("created_at", { ascending: true })
       .limit(limit);
 
-    if (error || !data || data.length === 0) {
-      return MOCK_CHAT_MESSAGES[waterSourceId] || [];
+    if (error || !data) {
+      return [];
     }
     return data as ChatMessageRow[];
   } catch {
-    return MOCK_CHAT_MESSAGES[waterSourceId] || [];
+    return [];
   }
 }
 
@@ -195,34 +195,86 @@ export async function getChatRoomByWaterSourceId(waterSourceId: string): Promise
 }
 
 export async function getChatRooms(): Promise<ChatRoomWithSource[]> {
-  return [
-    {
-      id: "room-bitang",
-      water_source_id: "a1111111-1111-4111-a111-111111111111",
-      is_active: true,
-      created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-      water_source: {
-        id: "a1111111-1111-4111-a111-111111111111",
-        name: "Bitang Waterfall",
-        slug: "bitang-waterfall",
-        category: "Waterfall",
-        barangay: "Liang",
-      },
-    },
-    {
-      id: "room-maasim",
-      water_source_id: "c3333333-3333-4333-c333-333333333333",
-      is_active: true,
-      created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-      water_source: {
-        id: "c3333333-3333-4333-c333-333333333333",
-        name: "Maasim River",
-        slug: "maasim-river",
-        category: "River",
-        barangay: "Gabao",
-      },
-    },
-  ];
+  if (!isSupabaseConfigured()) {
+    return [];
+  }
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("chat_rooms")
+      .select(`
+        id,
+        water_source_id,
+        is_active,
+        created_at,
+        water_source:water_source_id (
+          id,
+          name,
+          slug,
+          category,
+          barangay,
+          availability_status
+        ),
+        chat_messages (
+          id,
+          message,
+          display_name,
+          created_at,
+          status
+        )
+      `)
+      .eq("is_active", true)
+      .order("created_at", { ascending: true });
+
+    if (error || !data) {
+      console.error("Error fetching chat rooms:", error);
+      return [];
+    }
+
+    return data.map((room: any) => {
+      const published = (room.chat_messages || []).filter(
+        (m: any) => m.status === "published"
+      );
+      published.sort(
+        (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      const latest = published[0] || null;
+
+      return {
+        id: room.id,
+        water_source_id: room.water_source_id,
+        is_active: room.is_active,
+        created_at: room.created_at,
+        water_source: room.water_source,
+        message_count: published.length,
+        last_message: latest,
+      };
+    });
+  } catch (err) {
+    console.error("Error in getChatRooms:", err);
+    return [];
+  }
+}
+
+export async function getPublishedAnnouncements() {
+  if (!isSupabaseConfigured()) {
+    return [];
+  }
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("announcements")
+      .select("*")
+      .eq("status", "published")
+      .order("created_at", { ascending: false });
+
+    if (error || !data) {
+      return [];
+    }
+    return data;
+  } catch {
+    return [];
+  }
 }
 
 export async function getReportedMessages(): Promise<ChatMessageRow[]> {

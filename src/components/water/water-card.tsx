@@ -32,9 +32,9 @@ export function WaterCard({ source }: { source: WaterSourceWithPhotos }) {
   const isStale = isVerificationStale(source.last_verified_at);
 
   return (
-    <div className="group rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md transition-all overflow-hidden flex flex-col h-full">
-      {/* Image Header - Compact square on mobile, banner on desktop */}
-      <div className="relative w-full aspect-square sm:aspect-auto sm:h-48 bg-slate-100 dark:bg-slate-800 overflow-hidden">
+    <div className="group rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col h-full active:scale-[0.985]">
+      {/* Image Header - Aspect 4/3 for better proportions on mobile */}
+      <div className="relative w-full aspect-[4/3] sm:aspect-auto sm:h-48 bg-slate-100 dark:bg-slate-800 overflow-hidden">
         <Link href={`/water/${source.slug}`} className="block w-full h-full">
           {!imgError && primaryPhoto ? (
             <Image
@@ -74,7 +74,7 @@ export function WaterCard({ source }: { source: WaterSourceWithPhotos }) {
             e.stopPropagation();
             toggleSavedSource(source.id);
           }}
-          className="absolute top-2 right-2 sm:top-3 sm:right-3 p-1.5 sm:p-2 rounded-full bg-slate-900/60 hover:bg-slate-900/80 text-white backdrop-blur-xs transition-colors cursor-pointer z-10"
+          className="absolute top-2 right-2 sm:top-3 sm:right-3 p-1.5 sm:p-2 rounded-full bg-slate-900/60 hover:bg-slate-900/80 active:scale-90 text-white backdrop-blur-xs transition-all duration-150 cursor-pointer z-10 select-none"
           aria-label={saved ? "Remove from saved" : "Save location"}
         >
           <Bookmark className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", saved ? "fill-blue-400 text-blue-400" : "")} />
@@ -82,7 +82,7 @@ export function WaterCard({ source }: { source: WaterSourceWithPhotos }) {
       </div>
 
       {/* Body */}
-      <div className="p-2.5 sm:p-5 flex-1 flex flex-col justify-between">
+      <div className="p-2.5 sm:p-4 flex-1 flex flex-col justify-between">
         <div>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 mb-1 sm:mb-2">
             <h3 className="font-bold text-xs sm:text-base text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1">
@@ -112,7 +112,7 @@ export function WaterCard({ source }: { source: WaterSourceWithPhotos }) {
           </div>
 
           {source.description && (
-            <p className="hidden sm:block text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed mb-4">
+            <p className="hidden sm:block text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed mb-3">
               {source.description}
             </p>
           )}
@@ -127,10 +127,10 @@ export function WaterCard({ source }: { source: WaterSourceWithPhotos }) {
         </div>
 
         {/* Action Buttons */}
-        <div className="pt-2 sm:pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1.5 sm:gap-2 mt-1 sm:mt-0">
+        <div className="pt-2 sm:pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1.5 sm:gap-2 mt-1 sm:mt-0">
           <Link
             href={`/water/${source.slug}`}
-            className="flex-1 py-1.5 sm:py-2 text-center rounded-lg sm:rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[11px] sm:text-xs font-semibold transition-colors shadow-xs"
+            className="flex-1 py-1.5 sm:py-2 text-center rounded-lg sm:rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-[11px] sm:text-xs font-semibold transition-all duration-150 ease-out shadow-2xs select-none"
           >
             Details
           </Link>
@@ -139,7 +139,7 @@ export function WaterCard({ source }: { source: WaterSourceWithPhotos }) {
             href={directionsUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-90 transition-all duration-150 ease-out select-none"
             title="Directions"
           >
             <Navigation className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-500" />
@@ -147,7 +147,7 @@ export function WaterCard({ source }: { source: WaterSourceWithPhotos }) {
 
           <Link
             href={`/chat/${source.id}`}
-            className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-90 transition-all duration-150 ease-out select-none"
             title="Discussion"
           >
             <MessageSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-teal-500" />
