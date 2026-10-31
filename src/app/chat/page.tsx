@@ -55,14 +55,9 @@ export default function ChatMainPage() {
                 {currentSource?.name || "Community Discussion"}
               </h3>
               <span className="text-[11px] text-slate-400">
-                {currentSource?.barangay ? `Barangay ${currentSource.barangay}` : "Live Public Room"}
+                {currentSource?.barangay ? `Barangay ${currentSource.barangay}` : "Public Discussion"}
               </span>
             </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Live Stream</span>
           </div>
         </div>
 

@@ -106,10 +106,6 @@ export function PromotionalView() {
 
         {/* Headline & Narrative */}
         <div className="space-y-1 sm:space-y-1.5 shrink-0">
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest sm:hidden">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Live Municipal Map</span>
-          </div>
           <h2 className="text-lg sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-snug">
             Discover. Share. Be Prepared.
           </h2>
