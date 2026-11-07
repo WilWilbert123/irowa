@@ -1,10 +1,10 @@
 // src/components/admin/admin-sidebar.tsx
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Droplets,
@@ -22,6 +22,9 @@ import {
   X,
 } from "lucide-react";
 import { logoutAdminAction } from "@/actions/admin-auth-actions";
+import { getAllSubmissionsAction } from "@/actions/submission-actions";
+import { getAllReportsAction } from "@/actions/report-actions";
+import { getReportedMessagesAction } from "@/actions/chat-actions";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { cn } from "@/lib/utils";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -33,37 +36,70 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [pendingSubmissions, setPendingSubmissions] = useState<number>(0);
   const [pendingReports, setPendingReports] = useState<number>(0);
+  const [flaggedMessages, setFlaggedMessages] = useState<number>(0);
 
   // Fetch pending badge counts and listen in realtime
   useEffect(() => {
-    if (!isSupabaseConfigured()) return;
-    const supabase = createClient();
-
     const fetchCounts = async () => {
       try {
-        const { count: subCount } = await supabase
-          .from("water_submissions")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "pending");
+        if (isSupabaseConfigured()) {
+          const supabase = createClient();
+          const [{ count: subCount }, { count: repCount }, { count: chatCount }] = await Promise.all([
+            supabase
+              .from("water_submissions")
+              .select("*", { count: "exact", head: true })
+              .eq("status", "pending"),
+            supabase
+              .from("water_reports")
+              .select("*", { count: "exact", head: true })
+              .eq("status", "pending"),
+            supabase
+              .from("chat_messages")
+              .select("*", { count: "exact", head: true })
+              .eq("status", "flagged"),
+          ]);
 
-        const { count: repCount } = await supabase
-          .from("water_reports")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "pending");
-
-        setPendingSubmissions(subCount || 0);
-        setPendingReports(repCount || 0);
-      } catch {}
+          setPendingSubmissions(subCount ?? 0);
+          setPendingReports(repCount ?? 0);
+          setFlaggedMessages(chatCount ?? 0);
+        } else {
+          const [subs, reps, flagged] = await Promise.all([
+            getAllSubmissionsAction(),
+            getAllReportsAction(),
+            getReportedMessagesAction(),
+          ]);
+          setPendingSubmissions((subs || []).filter((s) => s.status === "pending").length);
+          setPendingReports((reps || []).filter((r) => r.status === "pending").length);
+          setFlaggedMessages((flagged || []).length);
+        }
+      } catch {
+        try {
+          const [subs, reps, flagged] = await Promise.all([
+            getAllSubmissionsAction(),
+            getAllReportsAction(),
+            getReportedMessagesAction(),
+          ]);
+          setPendingSubmissions((subs || []).filter((s) => s.status === "pending").length);
+          setPendingReports((reps || []).filter((r) => r.status === "pending").length);
+          setFlaggedMessages((flagged || []).length);
+        } catch {}
+      }
     };
 
     fetchCounts();
 
+    if (!isSupabaseConfigured()) return;
+    const supabase = createClient();
     const channel = supabase
       .channel("sidebar_badge_counts")
       .on("postgres_changes", { event: "*", schema: "public", table: "water_submissions" }, fetchCounts)
       .on("postgres_changes", { event: "*", schema: "public", table: "water_reports" }, fetchCounts)
+      .on("postgres_changes", { event: "*", schema: "public", table: "chat_messages" }, fetchCounts)
       .subscribe();
 
     return () => {
@@ -71,8 +107,9 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
     };
   }, []);
 
-  // Close drawer on path change on mobile
+  // Close drawer on path change on mobile & clear pending state
   useEffect(() => {
+    setPendingHref(null);
     if (onClose) {
       onClose();
     }
@@ -86,23 +123,38 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       href: "/admin/submissions",
       label: "Submissions",
       icon: Inbox,
-      badge: pendingSubmissions > 0 ? pendingSubmissions : undefined,
-      badgeColor: "bg-amber-500 text-amber-950",
+      badge: pendingSubmissions,
+      badgeColor: "bg-amber-500 text-white",
     },
     {
       href: "/admin/reports",
       label: "Community Reports",
       icon: FileText,
-      badge: pendingReports > 0 ? pendingReports : undefined,
+      badge: pendingReports,
       badgeColor: "bg-rose-500 text-white",
     },
-    { href: "/admin/chat", label: "Chat Moderation", icon: MessageSquare },
+    {
+      href: "/admin/chat",
+      label: "Chat Moderation",
+      icon: MessageSquare,
+      badge: flaggedMessages,
+      badgeColor: "bg-purple-600 text-white",
+    },
     { href: "/admin/announcements", label: "Announcements", icon: Megaphone },
     { href: "/admin/users", label: "Visitor Sessions", icon: Users },
     { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
     { href: "/admin/audit-logs", label: "Audit Logs", icon: History },
     { href: "/admin/settings", label: "System Settings", icon: Settings },
   ];
+
+  // Eagerly prefetch all admin routes into client memory for instant 0ms page loads
+  useEffect(() => {
+    navLinks.forEach((link) => {
+      try {
+        router.prefetch(link.href);
+      } catch {}
+    });
+  }, [router]);
 
   return (
     <>
@@ -118,12 +170,13 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       {/* Sidebar Content */}
       <aside
         className={cn(
-          "w-64 shrink-0 bg-white dark:bg-slate-900 text-slate-800 dark:text-white flex flex-col h-screen fixed lg:sticky top-0 z-50 border-r border-slate-200 dark:border-slate-800 transition-colors duration-200 ease-in-out",
-          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          "w-64 lg:w-68 shrink-0 bg-white dark:bg-slate-900 text-slate-800 dark:text-white flex flex-col border-r border-slate-200 dark:border-slate-800 transition-transform duration-200 ease-in-out",
+          "fixed inset-y-0 left-0 z-50 h-dvh lg:static lg:h-full lg:translate-x-0",
+          isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* Brand Header */}
-        <div className="p-5 pb-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-800/80">
+        <div className="p-4 sm:p-5 pb-3 sm:pb-4 shrink-0 flex items-center justify-between border-b border-slate-200 dark:border-slate-800/80">
           <Link href="/admin" className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden">
               <Image
@@ -147,7 +200,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             <button
               type="button"
               onClick={onClose}
-              className="lg:hidden p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
+              className="lg:hidden p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors cursor-pointer"
               aria-label="Close sidebar"
             >
               <X className="h-5 w-5" />
@@ -156,19 +209,35 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
         </div>
 
         {/* Nav List */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-1">
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1">
           {navLinks.map((item) => {
             const Icon = item.icon;
-            const isActive = item.exact
+            const isCurrent = item.exact
               ? pathname === item.href
               : pathname.startsWith(item.href);
+            const isActive = pendingHref ? pendingHref === item.href : isCurrent;
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={true}
+                onMouseEnter={() => {
+                  try {
+                    router.prefetch(item.href);
+                  } catch {}
+                }}
+                onTouchStart={() => {
+                  try {
+                    router.prefetch(item.href);
+                  } catch {}
+                }}
+                onClick={() => {
+                  setPendingHref(item.href);
+                  startTransition(() => {});
+                }}
                 className={cn(
-                  "flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all",
+                  "flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 active:scale-[0.98] select-none cursor-pointer",
                   isActive
                     ? "bg-blue-600 text-white shadow-xs"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/60"
@@ -182,8 +251,14 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                 {item.badge !== undefined && (
                   <span
                     className={cn(
-                      "px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0",
-                      item.badgeColor || "bg-blue-500 text-white"
+                      "min-w-5 h-5 px-1.5 flex items-center justify-center rounded-full text-[10px] font-bold shrink-0 transition-all",
+                      isActive
+                        ? item.badge > 0
+                          ? "bg-white text-blue-700 shadow-2xs font-extrabold"
+                          : "bg-white/20 text-white"
+                        : item.badge > 0
+                        ? item.badgeColor || "bg-blue-500 text-white"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/60"
                     )}
                   >
                     {item.badge}
@@ -193,35 +268,44 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             );
           })}
 
-          <div className="pt-4 border-t border-slate-200 dark:border-slate-800/80">
+          <div className="pt-3 border-t border-slate-200 dark:border-slate-800/80">
             <Link
-              href="/home"
+              href="/home?from=admin"
+              prefetch={true}
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  sessionStorage.setItem("irowa_admin_view_active", "true");
+                }
+              }}
               className="flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/60 transition-colors"
             >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Public Water Map</span>
+              <ArrowLeft className="h-4 w-4 shrink-0" />
+              <span className="truncate">Public Water Map</span>
             </Link>
           </div>
         </div>
 
         {/* User Footer */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950/40">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-              A
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950/40 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="relative shrink-0">
+              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                A
+              </div>
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
             </div>
             <div className="min-w-0">
-              <span className="font-bold text-xs text-slate-900 dark:text-white block leading-none truncate">
+              <span className="font-bold text-xs text-slate-900 dark:text-white block leading-tight truncate">
                 Admin Console
               </span>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium leading-tight">
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 leading-tight">
                 ● Live Operations
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <ThemeToggle />
+          <div className="flex items-center gap-1 shrink-0">
+            <ThemeToggle className="scale-85 origin-right" />
             <form action={logoutAdminAction}>
               <button
                 type="submit"

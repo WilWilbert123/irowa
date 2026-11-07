@@ -12,6 +12,35 @@ import {
 } from "@/lib/storage/offline-db";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
+function filterSourcesLocally(
+  sources: WaterSourceWithPhotos[],
+  filters?: Partial<WaterFilterState>
+): WaterSourceWithPhotos[] {
+  if (!filters) return sources;
+  let result = [...sources];
+  if (filters.category && filters.category !== "All") {
+    result = result.filter((s) => s.category === filters.category);
+  }
+  if (filters.availability && filters.availability !== "All") {
+    result = result.filter((s) => s.availability_status === filters.availability);
+  }
+  if (filters.barangay && filters.barangay !== "All") {
+    result = result.filter(
+      (s) => s.barangay?.toLowerCase() === filters.barangay?.toLowerCase()
+    );
+  }
+  if (filters.searchQuery) {
+    const q = filters.searchQuery.toLowerCase().trim();
+    result = result.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.description?.toLowerCase().includes(q) ||
+        s.barangay?.toLowerCase().includes(q)
+    );
+  }
+  return result;
+}
+
 export function useWaterSources(filters?: Partial<WaterFilterState>) {
   const [sources, setSources] = useState<WaterSourceWithPhotos[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -28,7 +57,8 @@ export function useWaterSources(filters?: Partial<WaterFilterState>) {
       try {
         const cached = await getWaterSourcesFromOfflineDB();
         if (cached && cached.length > 0) {
-          setSources(cached);
+          const filtered = filterSourcesLocally(cached, filters);
+          setSources(filtered);
           setIsLoading(false);
         }
       } catch {
@@ -36,7 +66,7 @@ export function useWaterSources(filters?: Partial<WaterFilterState>) {
       }
     }
     loadOfflineCache();
-  }, []);
+  }, [filters]);
 
   const loadSources = useCallback(async () => {
     setError(null);
@@ -66,7 +96,17 @@ export function useWaterSources(filters?: Partial<WaterFilterState>) {
         // If network returns empty or offline, check if we have cached sources
         const cached = await getWaterSourcesFromOfflineDB();
         if (cached.length > 0) {
-          setSources(cached);
+          const filtered = filterSourcesLocally(cached, filters);
+          if (location) {
+            setSources(
+              filtered.map((s) => ({
+                ...s,
+                distance_km: calculateDistanceKm(location.lat, location.lng, s.latitude, s.longitude),
+              }))
+            );
+          } else {
+            setSources(filtered);
+          }
         }
       }
     } catch (err: any) {
@@ -74,7 +114,17 @@ export function useWaterSources(filters?: Partial<WaterFilterState>) {
       try {
         const cached = await getWaterSourcesFromOfflineDB();
         if (cached.length > 0) {
-          setSources(cached);
+          const filtered = filterSourcesLocally(cached, filters);
+          if (location) {
+            setSources(
+              filtered.map((s) => ({
+                ...s,
+                distance_km: calculateDistanceKm(location.lat, location.lng, s.latitude, s.longitude),
+              }))
+            );
+          } else {
+            setSources(filtered);
+          }
           setError(null);
         } else {
           setError(err.message || "Failed to load water sources");

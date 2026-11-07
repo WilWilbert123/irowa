@@ -2,8 +2,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { SendHorizontal, User } from "lucide-react";
+import { SendHorizontal, User, WifiOff } from "lucide-react";
 import { useVisitor } from "@/contexts/visitor-context";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 import { Dialog, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface ChatInputProps {
@@ -13,6 +14,7 @@ interface ChatInputProps {
 
 export function ChatInput({ onSendMessage, disabled }: ChatInputProps) {
   const { visitor, setDisplayName } = useVisitor();
+  const isOnline = useOnlineStatus();
   const [text, setText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [namePromptOpen, setNamePromptOpen] = useState(false);
@@ -61,6 +63,13 @@ export function ChatInput({ onSendMessage, disabled }: ChatInputProps) {
   return (
     <>
       <form onSubmit={handleSubmit} className="relative p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+        {!isOnline && (
+          <div className="mb-2 py-1.5 px-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-900/40 text-[11px] text-amber-800 dark:text-amber-300 flex items-center gap-2">
+            <WifiOff className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>Offline: Viewing stored discussions. Live messaging will resume when reconnected.</span>
+          </div>
+        )}
+
         {errorMsg && (
           <div className="mb-2 text-xs text-rose-600 dark:text-rose-400 font-medium px-2">
             {errorMsg}
@@ -72,15 +81,21 @@ export function ChatInput({ onSendMessage, disabled }: ChatInputProps) {
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            disabled={disabled || isSubmitting}
-            placeholder={hasName ? `Message as ${visitor?.displayName}...` : "Type your message..."}
+            disabled={disabled || isSubmitting || !isOnline}
+            placeholder={
+              !isOnline
+                ? "Offline — Reconnect to send messages"
+                : hasName
+                ? `Message as ${visitor?.displayName}...`
+                : "Type your message..."
+            }
             maxLength={1000}
-            className="flex-1 bg-transparent px-3 py-2 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none"
+            className="flex-1 bg-transparent px-3 py-2 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none disabled:opacity-60"
           />
 
           <button
             type="submit"
-            disabled={!text.trim() || disabled || isSubmitting}
+            disabled={!text.trim() || disabled || isSubmitting || !isOnline}
             className="w-10 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 disabled:opacity-40 text-white flex items-center justify-center shrink-0 transition-all duration-150 ease-out shadow-xs cursor-pointer select-none"
             aria-label="Send message"
           >

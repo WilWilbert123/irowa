@@ -25,10 +25,12 @@ import { cn } from "@/lib/utils";
 import { WaterSource } from "@/types/water";
 import { useAdminRealtime } from "@/hooks/use-admin-realtime";
 import { Input } from "@/components/ui/input";
+import { getAdminCache, setAdminCache, ADMIN_CACHE_KEYS } from "@/lib/cache/admin-cache";
 
 export default function AdminWaterSourcesPage() {
-  const [sources, setSources] = useState<WaterSource[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedSources = getAdminCache<WaterSource[]>(ADMIN_CACHE_KEYS.WATER_SOURCES);
+  const [sources, setSources] = useState<WaterSource[]>(cachedSources || []);
+  const [loading, setLoading] = useState(!cachedSources);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [archivingId, setArchivingId] = useState<string | null>(null);
@@ -37,6 +39,7 @@ export default function AdminWaterSourcesPage() {
     try {
       const data = await getAllWaterSourcesAction();
       setSources(data);
+      setAdminCache(ADMIN_CACHE_KEYS.WATER_SOURCES, data);
     } catch (err) {
       console.error("Failed to load water sources:", err);
     } finally {
@@ -61,7 +64,11 @@ export default function AdminWaterSourcesPage() {
     try {
       const res = await archiveWaterSourceAction(id);
       if (res.success) {
-        setSources((prev) => prev.filter((s) => s.id !== id));
+        setSources((prev) => {
+          const updated = prev.filter((s) => s.id !== id);
+          setAdminCache(ADMIN_CACHE_KEYS.WATER_SOURCES, updated);
+          return updated;
+        });
       } else {
         alert(res.error || "Failed to archive water source");
       }
@@ -112,7 +119,7 @@ export default function AdminWaterSourcesPage() {
         }}
         isLive={isLive}
         lastSync={lastSync}
-        isRefreshing={isRefreshing || loading}
+        isRefreshing={isRefreshing}
         onRefresh={triggerRefresh}
         badgeCount={sources.length}
         compact={true}

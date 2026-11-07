@@ -12,16 +12,16 @@ export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased">
+    <div className="flex h-full w-full overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased">
       {/* Sidebar for Desktop & Drawer for Mobile */}
       <AdminSidebar
         isOpen={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
       />
 
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         {/* Mobile Top App Bar (shown only on < lg screens) */}
-        <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-800 shadow-xs transition-colors">
+        <header className="lg:hidden shrink-0 flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-800 shadow-xs transition-colors">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -34,11 +34,11 @@ export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
 
             <Link href="/admin" className="flex items-center gap-2">
               <Image
-                src="/images/irowa-logo.svg"
+                src="/images/irowalogo.png"
                 alt="IroWa"
                 width={24}
                 height={24}
-                className="w-6 h-6"
+                className="w-6 h-6 object-contain"
               />
               <span className="font-bold text-sm tracking-tight text-slate-900 dark:text-white">IroWa Admin</span>
             </Link>
@@ -49,12 +49,12 @@ export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span>LIVE</span>
             </div>
-            <ThemeToggle />
+            <ThemeToggle className="scale-90" />
           </div>
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 min-w-0 h-full overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
           {children}
         </main>
       </div>

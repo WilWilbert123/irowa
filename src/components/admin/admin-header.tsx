@@ -103,7 +103,7 @@ export function AdminHeader({
               )}
             />
           </span>
-          <span className="font-bold">{isLive ? "Live Realtime" : "Reconnecting"}</span>
+          <span className="font-bold">{isLive ? "Live" : "Reconnecting"}</span>
           <span className="text-slate-400 dark:text-slate-500 font-normal">({timeAgo})</span>
         </div>
 

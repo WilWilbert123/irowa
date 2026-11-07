@@ -5,10 +5,12 @@ import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Search, Bell, Menu, X, PlusCircle } from "lucide-react";
+import { Search, Bell, Menu, X, PlusCircle, ArrowLeft, Shield, WifiOff } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
 import { useVisitor } from "@/contexts/visitor-context";
 import { useNotifications } from "@/contexts/notification-context";
+import { useIsAdminSession } from "@/hooks/use-admin-session";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 
 interface NavbarProps {
   onSearchChange?: (query: string) => void;
@@ -20,8 +22,9 @@ export function Navbar({ onSearchChange, searchValue = "", showSearch = true }: 
   const router = useRouter();
   const { visitor } = useVisitor();
   const { unreadCount } = useNotifications();
+  const isAdmin = useIsAdminSession();
+  const isOnline = useOnlineStatus();
   const [localSearch, setLocalSearch] = useState(searchValue);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,8 +75,33 @@ export function Navbar({ onSearchChange, searchValue = "", showSearch = true }: 
         )}
 
         {/* Actions Right */}
-        <div className="flex items-center gap-3">
-          {/* Submit Water Source Button */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Offline Mode Indicator */}
+          {!isOnline && (
+            <Link
+              href="/offline"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-[11px] font-bold text-amber-600 dark:text-amber-400 transition-colors select-none"
+              title="You are currently offline. Tap to view offline mode."
+            >
+              <WifiOff className="h-3 w-3" />
+              <span>Offline Mode</span>
+            </Link>
+          )}
+
+          {/* Back to Admin Console button - Only visible when accessed from admin */}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              prefetch={true}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs active:scale-95 transition-all select-none cursor-pointer"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <Shield className="h-3 w-3 text-amber-300" />
+              <span>Back to Admin</span>
+            </Link>
+          )}
+
+          {/* Submit Water Source Button (Desktop) */}
           <Link
             href="/submit-water"
             className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-900/60 transition-colors"
@@ -98,69 +126,8 @@ export function Navbar({ onSearchChange, searchValue = "", showSearch = true }: 
               </span>
             )}
           </Link>
-
-          {/* Mobile menu trigger */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-            aria-label="Open navigation menu"
-          >
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
         </div>
       </div>
-
-      {/* Mobile Menu Dropdown */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 space-y-2">
-          {showSearch && (
-            <form onSubmit={handleSearchSubmit} className="mb-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={localSearch}
-                  onChange={(e) => {
-                    setLocalSearch(e.target.value);
-                    if (onSearchChange) onSearchChange(e.target.value);
-                  }}
-                  placeholder="Search water resources..."
-                  className="w-full h-9 pl-9 pr-3 rounded-full bg-slate-100 dark:bg-slate-800 text-sm"
-                />
-              </div>
-            </form>
-          )}
-          <Link
-            href="/submit-water"
-            onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            <PlusCircle className="h-4 w-4 text-blue-500" />
-            <span>Submit a Water Source</span>
-          </Link>
-          <Link
-            href="/saved"
-            onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            <span>Saved Locations</span>
-          </Link>
-          <Link
-            href="/profile"
-            onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            <span>Profile & Preferences</span>
-          </Link>
-          <Link
-            href="/about"
-            onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            <span>About IroWa</span>
-          </Link>
-        </div>
-      )}
     </header>
   );
 }

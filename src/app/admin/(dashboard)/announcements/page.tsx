@@ -24,10 +24,12 @@ import { formatDate } from "@/lib/utils/date-utils";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { useAdminRealtime } from "@/hooks/use-admin-realtime";
 import { cn } from "@/lib/utils";
+import { getAdminCache, setAdminCache, ADMIN_CACHE_KEYS } from "@/lib/cache/admin-cache";
 
 export default function AdminAnnouncementsPage() {
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getAdminCache<Announcement[]>(ADMIN_CACHE_KEYS.ANNOUNCEMENTS);
+  const [announcements, setAnnouncements] = useState<Announcement[]>(cached || []);
+  const [loading, setLoading] = useState(!cached);
   const [search, setSearch] = useState("");
   const [filterPriority, setFilterPriority] = useState<string>("all");
 
@@ -35,6 +37,7 @@ export default function AdminAnnouncementsPage() {
     try {
       const data = await getActiveAnnouncementsAction();
       setAnnouncements(data);
+      setAdminCache(ADMIN_CACHE_KEYS.ANNOUNCEMENTS, data);
     } catch (err) {
       console.error("Failed to load announcements", err);
     } finally {
@@ -90,7 +93,7 @@ export default function AdminAnnouncementsPage() {
         }}
         isLive={isLive}
         lastSync={lastSync}
-        isRefreshing={isRefreshing || loading}
+        isRefreshing={isRefreshing}
         onRefresh={triggerRefresh}
         badgeCount={announcements.length}
         compact={true}

@@ -25,10 +25,12 @@ import { formatDate } from "@/lib/utils/date-utils";
 import { useAdminRealtime } from "@/hooks/use-admin-realtime";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { cn } from "@/lib/utils";
+import { getAdminCache, setAdminCache, ADMIN_CACHE_KEYS } from "@/lib/cache/admin-cache";
 
 export default function AdminReportsPage() {
-  const [reports, setReports] = useState<WaterReport[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedReports = getAdminCache<WaterReport[]>(ADMIN_CACHE_KEYS.REPORTS);
+  const [reports, setReports] = useState<WaterReport[]>(cachedReports || []);
+  const [loading, setLoading] = useState(!cachedReports);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -37,6 +39,7 @@ export default function AdminReportsPage() {
     try {
       const data = await getAllReportsAction();
       setReports(data);
+      setAdminCache(ADMIN_CACHE_KEYS.REPORTS, data);
     } catch (err) {
       console.error("Failed to load reports", err);
     } finally {
@@ -65,9 +68,11 @@ export default function AdminReportsPage() {
         `Status updated to ${status} by administrator`
       );
       if (res.success) {
-        setReports((prev) =>
-          prev.map((r) => (r.id === reportId ? { ...r, status } : r))
-        );
+        setReports((prev) => {
+          const updated = prev.map((r) => (r.id === reportId ? { ...r, status } : r));
+          setAdminCache(ADMIN_CACHE_KEYS.REPORTS, updated);
+          return updated;
+        });
       } else {
         alert("Failed to update report status");
       }
@@ -113,7 +118,7 @@ export default function AdminReportsPage() {
         subtitle="Investigate reported inaccuracies, dried-up sources, and safety hazards reported by local citizens."
         isLive={isLive}
         lastSync={lastSync}
-        isRefreshing={isRefreshing || loading}
+        isRefreshing={isRefreshing}
         onRefresh={triggerRefresh}
         badgeCount={pendingCount}
         compact={true}

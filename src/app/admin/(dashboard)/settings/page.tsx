@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
+import dynamic from "next/dynamic";
 import {
   Settings,
   Save,
@@ -36,23 +37,41 @@ import {
   DatabaseTableInfo,
 } from "@/actions/settings-actions";
 import { cn } from "@/lib/utils";
+import { getAdminCache, setAdminCache, ADMIN_CACHE_KEYS } from "@/lib/cache/admin-cache";
+
+// Dynamically load LocationPickerMap without SSR for Leaflet compatibility
+const LocationPickerMap = dynamic(
+  () => import("@/components/map/location-picker-map"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[260px] sm:h-[300px] w-full rounded-2xl bg-slate-100 dark:bg-slate-900 animate-pulse flex flex-col items-center justify-center gap-2 border border-slate-200 dark:border-slate-800">
+        <div className="w-7 h-7 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+        <span className="text-xs font-semibold text-slate-400">Loading map for pin location...</span>
+      </div>
+    ),
+  }
+);
 
 export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState<"general" | "advisory" | "database">("general");
 
-  const [settings, setSettings] = useState<SystemSettingsData>({
-    appName: "IroWa",
-    tagline: "Irosin Water Resources Map",
-    emergencyHotline: "0917-123-4567",
-    alertBannerEnabled: true,
-    alertBannerText: "Water Advisory: Regular conservation guidelines in effect for low-elevation barangays.",
-    mapCenterLat: 12.7042,
-    mapCenterLng: 124.0326,
-    defaultZoom: 13,
-  });
+  const cachedSettings = getAdminCache<SystemSettingsData>(ADMIN_CACHE_KEYS.SETTINGS);
+  const [settings, setSettings] = useState<SystemSettingsData>(
+    cachedSettings || {
+      appName: "IroWa",
+      tagline: "Irosin Water Resources Map",
+      emergencyHotline: "0917-123-4567",
+      alertBannerEnabled: true,
+      alertBannerText: "Water Advisory: Regular conservation guidelines in effect for low-elevation barangays.",
+      mapCenterLat: 12.7042,
+      mapCenterLng: 124.0326,
+      defaultZoom: 13,
+    }
+  );
 
   const [tables, setTables] = useState<DatabaseTableInfo[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!cachedSettings);
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -69,6 +88,7 @@ export default function AdminSettingsPage() {
       ]);
       setSettings(settingsData);
       setTables(tablesData);
+      setAdminCache(ADMIN_CACHE_KEYS.SETTINGS, settingsData);
     } catch (err) {
       console.error("Failed to load settings data:", err);
     } finally {
@@ -94,6 +114,11 @@ export default function AdminSettingsPage() {
       const res = await updateSystemSettingsAction(settings);
       if (res.success) {
         setSavedSuccess(true);
+        setAdminCache(ADMIN_CACHE_KEYS.SETTINGS, settings);
+        setFeedback({
+          type: "success",
+          text: "Emergency advisory & system configuration saved and broadcasted in real-time!",
+        });
         setTimeout(() => setSavedSuccess(false), 4000);
       } else {
         alert(res.error || "Failed to save settings");
@@ -152,7 +177,7 @@ export default function AdminSettingsPage() {
         subtitle="Configure default map focus, municipal emergency advisories, and Supabase database storage."
         isLive={isLive}
         lastSync={lastSync}
-        isRefreshing={isRefreshing || loading}
+        isRefreshing={isRefreshing}
         onRefresh={triggerRefresh}
         compact={true}
         className="shrink-0 mb-0 pb-2.5"
@@ -258,17 +283,43 @@ export default function AdminSettingsPage() {
       {activeTab === "general" && (
         <form onSubmit={handleSave} className="flex-1 min-h-0 flex flex-col justify-between">
           <div className="space-y-3 overflow-y-auto pr-1">
-            {/* Map Settings Card */}
+            {/* Map Settings Card with Interactive Pinning */}
             <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                <h3 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-blue-500" />
-                  <span>Default Map Coordinate Focus</span>
-                </h3>
-                <span className="text-[11px] text-slate-400">Irosin, Sorsogon</span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-blue-500 shrink-0" />
+                  <div>
+                    <h3 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white leading-tight">
+                      Default Map Coordinate Focus
+                    </h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
+                      Click or drag the pin on the map to set municipal center coordinates
+                    </p>
+                  </div>
+                </div>
+                <span className="self-start sm:self-center text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-0.5 rounded-full border border-blue-200/60 dark:border-blue-900/40 shrink-0">
+                  Interactive Pin
+                </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              {/* Leaflet Interactive Map for Admin Coordinate Pinning */}
+              <div className="overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+                <LocationPickerMap
+                  latitude={settings.mapCenterLat}
+                  longitude={settings.mapCenterLng}
+                  onChange={(lat, lng) => {
+                    setSettings((prev) => ({
+                      ...prev,
+                      mapCenterLat: lat,
+                      mapCenterLng: lng,
+                    }));
+                  }}
+                  className="h-[260px] sm:h-[300px] w-full"
+                />
+              </div>
+
+              {/* Coordinates & Zoom Inputs */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
                     Center Latitude

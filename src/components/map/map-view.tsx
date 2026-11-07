@@ -15,6 +15,7 @@ import { DirectionsPanel } from "./directions-panel";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useVisitor } from "@/contexts/visitor-context";
+import { useSystemSettings } from "@/hooks/use-system-settings";
 
 interface MapViewProps {
   sources: WaterSourceWithPhotos[];
@@ -61,6 +62,12 @@ export function MapView({
   const isMobile = useIsMobile();
   const { preferences, updatePreferences } = useVisitor();
   const { location, isLocating, requestLocation } = useGeolocation();
+  const { settings: sysSettings } = useSystemSettings();
+  const mapCenter: [number, number] = [
+    sysSettings.mapCenterLat || MAP_CONFIG.center[0],
+    sysSettings.mapCenterLng || MAP_CONFIG.center[1],
+  ];
+  const mapZoom = sysSettings.defaultZoom || MAP_CONFIG.defaultZoom;
   const [currentLayer, setCurrentLayer] = useState<"standard" | "satellite" | "terrain">(
     preferences?.mapStyle || "satellite"
   );
@@ -124,8 +131,8 @@ export function MapView({
     }
 
     const map = L.map(container, {
-      center: MAP_CONFIG.center,
-      zoom: MAP_CONFIG.defaultZoom,
+      center: mapCenter,
+      zoom: mapZoom,
       minZoom: MAP_CONFIG.minZoom,
       maxZoom: 19,
       zoomControl: false,
@@ -331,7 +338,7 @@ export function MapView({
 
   const handleRecenter = () => {
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo(MAP_CONFIG.center, MAP_CONFIG.defaultZoom, { duration: 1.2 });
+      mapInstanceRef.current.flyTo(mapCenter, mapZoom, { duration: 1.2 });
     }
   };
 

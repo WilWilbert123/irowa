@@ -19,15 +19,18 @@ import { CategoryChart } from "@/components/admin/category-chart";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { useAdminRealtime } from "@/hooks/use-admin-realtime";
 import { cn } from "@/lib/utils";
+import { getAdminCache, setAdminCache, ADMIN_CACHE_KEYS } from "@/lib/cache/admin-cache";
 
 export default function AdminAnalyticsPage() {
-  const [metrics, setMetrics] = useState<AdminDashboardMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
+  const cached = getAdminCache<AdminDashboardMetrics>(ADMIN_CACHE_KEYS.ANALYTICS);
+  const [metrics, setMetrics] = useState<AdminDashboardMetrics | null>(cached);
+  const [loading, setLoading] = useState(!cached);
 
   const loadData = useCallback(async () => {
     try {
       const data = await getAdminDashboardMetricsAction();
       setMetrics(data);
+      setAdminCache(ADMIN_CACHE_KEYS.ANALYTICS, data);
     } catch (err) {
       console.error("Failed to load metrics", err);
     } finally {
@@ -78,7 +81,7 @@ export default function AdminAnalyticsPage() {
         subtitle="Real-time municipal metrics on water availability, citizen submissions, and resource distributions in Irosin."
         isLive={isLive}
         lastSync={lastSync}
-        isRefreshing={isRefreshing || loading}
+        isRefreshing={isRefreshing}
         onRefresh={triggerRefresh}
         compact={true}
         className="shrink-0 mb-0 pb-2"
