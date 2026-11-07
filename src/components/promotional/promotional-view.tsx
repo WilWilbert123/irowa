@@ -14,6 +14,46 @@ import {
   Check,
   ArrowRight,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const FEATURES = [
+  {
+    title: "Water Sources",
+    description: "Rivers, springs & waterfalls",
+    href: "/water",
+    image: "/images/feature-water-sources.jpg",
+    icon: MapPin,
+    offsetClass: "translate-y-0 sm:translate-y-0",
+    badgeClass: "bg-blue-600/90 text-white border-blue-300/40 shadow-blue-500/30",
+  },
+  {
+    title: "Stay Safe",
+    description: "Emergency water relief",
+    href: "/notifications",
+    image: "/images/feature-stay-safe.jpg",
+    icon: ShieldCheck,
+    offsetClass: "translate-y-2.5 sm:translate-y-3",
+    badgeClass: "bg-emerald-600/90 text-white border-emerald-300/40 shadow-emerald-500/30",
+  },
+  {
+    title: "Share",
+    description: "Suggest a well or spring",
+    href: "/submit-water",
+    image: "/images/feature-share.jpg",
+    icon: Share2,
+    offsetClass: "-translate-y-1.5 sm:translate-y-0",
+    badgeClass: "bg-teal-600/90 text-white border-teal-300/40 shadow-teal-500/30",
+  },
+  {
+    title: "Build Community",
+    description: "Connect with local residents",
+    href: "/chat",
+    image: "/images/feature-community.jpg",
+    icon: Users,
+    offsetClass: "translate-y-2 sm:translate-y-2.5",
+    badgeClass: "bg-indigo-600/90 text-white border-indigo-300/40 shadow-indigo-500/30",
+  },
+];
 
 export function PromotionalView() {
   const [copied, setCopied] = useState(false);
@@ -114,77 +154,74 @@ export function PromotionalView() {
           </p>
         </div>
 
-        {/* 4 Feature Columns with Glassmorphism & Hover Polish */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5 shrink-0">
-          {/* Feature 1 */}
-          <div className="group flex flex-col space-y-1.5 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-white/80 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-blue-400 dark:hover:border-blue-500 active:scale-95 transition-all duration-150 select-none">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <MapPin className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
-            </div>
-            <h3 className="font-bold text-xs sm:text-sm md:text-base text-slate-900 dark:text-white leading-tight">
-              Water Sources
-            </h3>
-            <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 leading-snug">
-              Rivers, springs, waterfalls & resorts
-            </p>
-          </div>
+        {/* 4 Feature Columns with Full-Bleed Image Backgrounds & Floating Glassmorphism */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5 shrink-0 pt-0.5 pb-1 sm:pb-2">
+          {FEATURES.map((feature) => {
+            const Icon = feature.icon;
+            return (
+              <Link
+                key={feature.title}
+                href={feature.href}
+                prefetch={true}
+                className={cn(
+                  "group relative flex flex-col justify-between h-28 sm:h-32 md:h-36 p-3 rounded-2xl sm:rounded-3xl overflow-hidden border border-white/40 dark:border-white/15 shadow-lg shadow-black/25 hover:shadow-2xl hover:-translate-y-1.5 active:scale-95 transition-all duration-300 select-none",
+                  feature.offsetClass
+                )}
+              >
+                {/* Full-Bleed Image Background */}
+                <Image
+                  src={feature.image}
+                  alt={feature.title}
+                  fill
+                  className="object-cover object-center group-hover:scale-110 transition-transform duration-700 ease-out"
+                  unoptimized
+                />
 
-          {/* Feature 2 */}
-          <div className="group flex flex-col space-y-1.5 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-white/80 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-sky-400 dark:hover:border-sky-500 active:scale-95 transition-all duration-150 select-none">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <ShieldCheck className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
-            </div>
-            <h3 className="font-bold text-xs sm:text-sm md:text-base text-slate-900 dark:text-white leading-tight">
-              Stay Safe
-            </h3>
-            <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 leading-snug">
-              Find water during emergencies
-            </p>
-          </div>
+                {/* Dark Gradient Overlay for Maximum Contrast & Readability */}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/55 to-slate-950/25 pointer-events-none transition-opacity duration-300 group-hover:via-slate-950/45" />
 
-          {/* Feature 3 */}
-          <div className="group flex flex-col space-y-1.5 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-white/80 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-teal-400 dark:hover:border-teal-500 active:scale-95 transition-all duration-150 select-none">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-teal-100 dark:bg-teal-900/50 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <Share2 className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
-            </div>
-            <h3 className="font-bold text-xs sm:text-sm md:text-base text-slate-900 dark:text-white leading-tight">
-              Share
-            </h3>
-            <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 leading-snug">
-              Help your community by sharing
-            </p>
-          </div>
+                {/* Top Row: Floating Glass Icon Pill */}
+                <div className="relative z-10 flex items-center justify-between">
+                  <div
+                    className={cn(
+                      "w-7 h-7 sm:w-8 sm:h-8 rounded-xl backdrop-blur-md shadow-md flex items-center justify-center border transition-transform duration-300 group-hover:scale-110",
+                      feature.badgeClass
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
+                  </div>
+                </div>
 
-          {/* Feature 4 */}
-          <div className="group flex flex-col space-y-1.5 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-white/80 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-indigo-400 dark:hover:border-indigo-500 active:scale-95 transition-all duration-150 select-none">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <Users className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
-            </div>
-            <h3 className="font-bold text-xs sm:text-sm md:text-base text-slate-900 dark:text-white leading-tight">
-              Build Community
-            </h3>
-            <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 leading-snug">
-              Connect with locals and visitors
-            </p>
-          </div>
+                {/* Bottom Content: High-contrast Title & Description */}
+                <div className="relative z-10 space-y-0.5">
+                  <h3 className="font-black text-xs sm:text-sm md:text-base text-white tracking-tight leading-tight drop-shadow-sm group-hover:text-sky-300 transition-colors">
+                    {feature.title}
+                  </h3>
+                  <p className="text-[10px] sm:text-[11px] md:text-xs text-slate-200/90 font-medium leading-snug drop-shadow-xs line-clamp-1 sm:line-clamp-2">
+                    {feature.description}
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
         </div>
 
         {/* Center Action: Explore Irosin with glowing gradient CTA */}
-        <div className="flex flex-col items-center justify-center shrink-0 pt-1">
+        <div className="flex flex-col items-center justify-center shrink-0 pt-2 sm:pt-3">
           <Link
             href="/home"
-            className="group relative inline-flex items-center justify-center gap-3 px-8 py-3.5 sm:px-12 sm:py-4 rounded-2xl bg-gradient-to-r from-blue-600 via-sky-600 to-blue-700 hover:from-blue-700 hover:via-sky-700 hover:to-blue-800 active:scale-95 text-white font-bold text-sm sm:text-base shadow-xl shadow-blue-500/30 hover:shadow-2xl hover:shadow-blue-500/40 transition-all duration-150 text-center select-none"
+            className="group relative inline-flex items-center justify-center gap-3 px-8 py-3.5 sm:px-12 sm:py-4 rounded-full bg-gradient-to-r from-blue-600 via-sky-600 to-blue-700 hover:from-blue-700 hover:via-sky-700 hover:to-blue-800 active:scale-95 text-white font-extrabold text-sm sm:text-base shadow-xl shadow-blue-500/30 hover:shadow-2xl hover:shadow-blue-500/40 transition-all duration-150 text-center select-none"
           >
             <Compass className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-sky-200 group-hover:rotate-45 transition-transform duration-300" />
             <span className="tracking-wide">Explore Irosin</span>
             <ArrowRight className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-sky-200 group-hover:translate-x-1.5 transition-transform duration-200" />
           </Link>
 
-          {/* Secondary Controls with clear spacing */}
-          <div className="mt-2.5 sm:mt-4 flex items-center justify-center gap-3 text-xs sm:text-sm">
+          {/* Secondary Controls with clear, spacious breathing room */}
+          <div className="mt-4 sm:mt-5 flex items-center justify-center gap-3.5 sm:gap-4 text-xs sm:text-sm">
             <Link
               href="/water"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-white/90 hover:bg-white dark:bg-slate-900/90 dark:hover:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold shadow-xs active:scale-95 transition-all duration-150 backdrop-blur-md select-none"
+              className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full bg-white/95 hover:bg-white dark:bg-slate-900/90 dark:hover:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold shadow-xs hover:shadow-md active:scale-95 transition-all duration-150 backdrop-blur-md select-none"
             >
               <Droplets className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-500" />
               <span>Water Directory</span>
@@ -193,7 +230,7 @@ export function PromotionalView() {
             <button
               type="button"
               onClick={handleShare}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-white/90 hover:bg-white dark:bg-slate-900/90 dark:hover:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold shadow-xs active:scale-95 transition-all duration-150 cursor-pointer backdrop-blur-md select-none"
+              className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full bg-white/95 hover:bg-white dark:bg-slate-900/90 dark:hover:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold shadow-xs hover:shadow-md active:scale-95 transition-all duration-150 cursor-pointer backdrop-blur-md select-none"
             >
               {copied ? (
                 <>
