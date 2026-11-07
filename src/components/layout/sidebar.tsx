@@ -18,22 +18,24 @@ import {
 } from "lucide-react";
 import { useNotifications } from "@/contexts/notification-context";
 import { useIsAdminSession } from "@/hooks/use-admin-session";
+import { useLanguage } from "@/contexts/language-context";
 import { cn } from "@/lib/utils";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { unreadCount } = useNotifications();
+  const { t } = useLanguage();
   const isAdmin = useIsAdminSession();
 
   // If inside admin dashboard, the admin layout uses its own admin sidebar
   if (pathname.startsWith("/admin")) return null;
 
   const navItems = [
-    { href: "/home", label: "Map", icon: Map, active: pathname === "/home" || pathname === "/" || pathname === "/map" },
-    { href: "/water", label: "Water Sources", icon: Droplets, active: pathname.startsWith("/water") },
-    { href: "/chat", label: "Chat", icon: MessageSquare, active: pathname.startsWith("/chat") },
-    { href: "/notifications", label: "Notifications", icon: Bell, active: pathname.startsWith("/notifications"), badge: unreadCount },
-    { href: "/saved", label: "Saved Locations", icon: Bookmark, active: pathname.startsWith("/saved") },
+    { href: "/home", label: t.nav.map, icon: Map, active: pathname === "/home" || pathname === "/" || pathname === "/map" },
+    { href: "/water", label: t.nav.waterSources, icon: Droplets, active: pathname.startsWith("/water") },
+    { href: "/chat", label: t.nav.chat, icon: MessageSquare, active: pathname.startsWith("/chat") },
+    { href: "/notifications", label: t.nav.notifications, icon: Bell, active: pathname.startsWith("/notifications"), badge: unreadCount },
+    { href: "/saved", label: t.nav.saved, icon: Bookmark, active: pathname.startsWith("/saved") },
   ];
 
   return (
@@ -78,7 +80,7 @@ export function Sidebar() {
             className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-950/50 transition-colors"
           >
             <PlusCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-            <span>Submit Water Point</span>
+            <span>{t.nav.submit}</span>
           </Link>
         </div>
       </div>
@@ -93,7 +95,7 @@ export function Sidebar() {
           >
             <ArrowLeft className="h-4 w-4" />
             <Shield className="h-4 w-4 text-amber-500" />
-            <span>Back to Admin</span>
+            <span>{t.nav.backToAdmin}</span>
           </Link>
         )}
 
@@ -107,7 +109,7 @@ export function Sidebar() {
           )}
         >
           <Settings className="h-5 w-5 text-slate-400" />
-          <span>Settings & Profile</span>
+          <span>{t.nav.settings}</span>
         </Link>
       </div>
     </aside>

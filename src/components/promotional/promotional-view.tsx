@@ -15,48 +15,51 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const FEATURES = [
-  {
-    title: "Water Sources",
-    description: "Rivers, springs & waterfalls",
-    href: "/water",
-    image: "/images/feature-water-sources.jpg",
-    icon: MapPin,
-    offsetClass: "translate-y-0 sm:translate-y-0",
-    badgeClass: "bg-blue-600/90 text-white border-blue-300/40 shadow-blue-500/30",
-  },
-  {
-    title: "Stay Safe",
-    description: "Emergency water relief",
-    href: "/notifications",
-    image: "/images/feature-stay-safe.jpg",
-    icon: ShieldCheck,
-    offsetClass: "translate-y-2.5 sm:translate-y-3",
-    badgeClass: "bg-emerald-600/90 text-white border-emerald-300/40 shadow-emerald-500/30",
-  },
-  {
-    title: "Share",
-    description: "Suggest a well or spring",
-    href: "/submit-water",
-    image: "/images/feature-share.jpg",
-    icon: Share2,
-    offsetClass: "-translate-y-1.5 sm:translate-y-0",
-    badgeClass: "bg-teal-600/90 text-white border-teal-300/40 shadow-teal-500/30",
-  },
-  {
-    title: "Build Community",
-    description: "Connect with local residents",
-    href: "/chat",
-    image: "/images/feature-community.jpg",
-    icon: Users,
-    offsetClass: "translate-y-2 sm:translate-y-2.5",
-    badgeClass: "bg-indigo-600/90 text-white border-indigo-300/40 shadow-indigo-500/30",
-  },
-];
+import { useLanguage } from "@/contexts/language-context";
+import { LanguageToggle } from "@/components/layout/language-toggle";
 
 export function PromotionalView() {
   const [copied, setCopied] = useState(false);
+  const { t } = useLanguage();
+
+  const features = [
+    {
+      title: t.welcome.cardWaterSourcesTitle,
+      description: t.welcome.cardWaterSourcesDesc,
+      href: "/water",
+      image: "/images/feature-water-sources.jpg",
+      icon: MapPin,
+      offsetClass: "translate-y-0 sm:translate-y-0",
+      badgeClass: "bg-blue-600/90 text-white border-blue-300/40 shadow-blue-500/30",
+    },
+    {
+      title: t.welcome.cardStaySafeTitle,
+      description: t.welcome.cardStaySafeDesc,
+      href: "/notifications",
+      image: "/images/feature-stay-safe.jpg",
+      icon: ShieldCheck,
+      offsetClass: "translate-y-2.5 sm:translate-y-3",
+      badgeClass: "bg-emerald-600/90 text-white border-emerald-300/40 shadow-emerald-500/30",
+    },
+    {
+      title: t.welcome.cardShareTitle,
+      description: t.welcome.cardShareDesc,
+      href: "/submit-water",
+      image: "/images/feature-share.jpg",
+      icon: Share2,
+      offsetClass: "-translate-y-1.5 sm:translate-y-0",
+      badgeClass: "bg-teal-600/90 text-white border-teal-300/40 shadow-teal-500/30",
+    },
+    {
+      title: t.welcome.cardCommunityTitle,
+      description: t.welcome.cardCommunityDesc,
+      href: "/chat",
+      image: "/images/feature-community.jpg",
+      icon: Users,
+      offsetClass: "translate-y-2 sm:translate-y-2.5",
+      badgeClass: "bg-indigo-600/90 text-white border-indigo-300/40 shadow-indigo-500/30",
+    },
+  ];
 
   const handleShare = async () => {
     const url = typeof window !== "undefined" ? window.location.origin : "https://irowa.local";
@@ -120,7 +123,7 @@ export function PromotionalView() {
       {/* 2. Foreground Content - Single Screen Viewport (Zero Scroll) */}
       <div className="relative z-10 w-full max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-8 pt-3 sm:pt-6 md:pt-7 pb-3 sm:pb-5 flex-1 flex flex-col justify-between min-h-0 space-y-2 sm:space-y-3.5 md:space-y-4">
 
-        {/* Top Bar: Brand Logo & Live Badge */}
+        {/* Top Bar: Brand Logo & Language Toggle */}
         <div className="flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="relative w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16 shrink-0 flex items-center justify-center drop-shadow-md">
@@ -138,25 +141,27 @@ export function PromotionalView() {
                 IroWa
               </h1>
               <p className="text-[11px] sm:text-xs md:text-sm font-bold text-sky-800 dark:text-sky-300 mt-0.5 tracking-tight">
-                Irosin Water Resources Map
+                {t.welcome.tagline}
               </p>
             </div>
           </div>
+
+          <LanguageToggle />
         </div>
 
         {/* Headline & Narrative */}
         <div className="space-y-1 sm:space-y-1.5 shrink-0">
           <h2 className="text-lg sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-snug">
-            Discover. Share. Be Prepared.
+            {t.welcome.headline}
           </h2>
           <p className="text-[11px] sm:text-xs md:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-normal max-w-3xl line-clamp-2 sm:line-clamp-none">
-            Find and explore water resources in Irosin, Sorsogon. From natural springs to resorts, IroWa helps you stay informed, connected, and ready — especially during droughts and emergencies.
+            {t.welcome.description}
           </p>
         </div>
 
         {/* 4 Feature Columns with Full-Bleed Image Backgrounds & Floating Glassmorphism */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5 shrink-0 pt-0.5 pb-1 sm:pb-2">
-          {FEATURES.map((feature) => {
+          {features.map((feature) => {
             const Icon = feature.icon;
             return (
               <Link
@@ -213,7 +218,7 @@ export function PromotionalView() {
             className="group relative inline-flex items-center justify-center gap-3 px-8 py-3.5 sm:px-12 sm:py-4 rounded-full bg-gradient-to-r from-blue-600 via-sky-600 to-blue-700 hover:from-blue-700 hover:via-sky-700 hover:to-blue-800 active:scale-95 text-white font-extrabold text-sm sm:text-base shadow-xl shadow-blue-500/30 hover:shadow-2xl hover:shadow-blue-500/40 transition-all duration-150 text-center select-none"
           >
             <Compass className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-sky-200 group-hover:rotate-45 transition-transform duration-300" />
-            <span className="tracking-wide">Explore Irosin</span>
+            <span className="tracking-wide">{t.welcome.exploreBtn}</span>
             <ArrowRight className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-sky-200 group-hover:translate-x-1.5 transition-transform duration-200" />
           </Link>
 
@@ -224,7 +229,7 @@ export function PromotionalView() {
               className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full bg-white/95 hover:bg-white dark:bg-slate-900/90 dark:hover:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold shadow-xs hover:shadow-md active:scale-95 transition-all duration-150 backdrop-blur-md select-none"
             >
               <Droplets className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-500" />
-              <span>Water Directory</span>
+              <span>{t.welcome.waterDirectoryBtn}</span>
             </Link>
 
             <button
@@ -235,12 +240,12 @@ export function PromotionalView() {
               {copied ? (
                 <>
                   <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-500" />
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">Link Copied!</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">{t.welcome.linkCopied}</span>
                 </>
               ) : (
                 <>
                   <Share2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-500" />
-                  <span>Share IroWa</span>
+                  <span>{t.welcome.shareBtn}</span>
                 </>
               )}
             </button>
@@ -250,10 +255,10 @@ export function PromotionalView() {
         {/* Footer Credit & Sorsogon Tag */}
         <div className="flex items-center justify-between pt-1 text-[10px] sm:text-[11px] text-slate-600 dark:text-slate-400">
           <span className="font-medium bg-white/70 dark:bg-slate-900/70 px-2 py-0.5 rounded-md backdrop-blur-xs">
-            © {new Date().getFullYear()} IroWa All Rights Reserved
+            © {new Date().getFullYear()} IroWa {t.welcome.allRightsReserved}
           </span>
           <div className="px-2.5 py-0.5 rounded-full bg-slate-900/70 backdrop-blur-md text-white/95 font-medium shadow-xs">
-            Irosin, Sorsogon
+            {t.welcome.locationTag}
           </div>
         </div>
 
