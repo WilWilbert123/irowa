@@ -6,11 +6,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Map, Droplets, MessageSquare, Menu } from "lucide-react";
 import { useNotifications } from "@/contexts/notification-context";
+import { useLanguage } from "@/contexts/language-context";
 import { cn } from "@/lib/utils";
 
 export function BottomNav() {
   const pathname = usePathname();
   const { unreadCount } = useNotifications();
+  const { t } = useLanguage();
 
   // If in admin dashboard or inside a specific chat conversation, don't show public bottom nav
   if (pathname.startsWith("/admin") || (pathname.startsWith("/chat/") && pathname !== "/chat")) return null;
@@ -44,7 +46,7 @@ export function BottomNav() {
           )}
         >
           <Map className="h-5 w-5 mb-1" />
-          <span className="text-[11px] leading-none">Map</span>
+          <span className="text-[11px] leading-none">{t.nav.map}</span>
         </Link>
 
         {/* 2. Sources */}
@@ -59,7 +61,7 @@ export function BottomNav() {
           )}
         >
           <Droplets className="h-5 w-5 mb-1" />
-          <span className="text-[11px] leading-none">Sources</span>
+          <span className="text-[11px] leading-none">{t.nav.waterSources}</span>
         </Link>
 
         {/* 3. Chat */}
@@ -74,7 +76,7 @@ export function BottomNav() {
           )}
         >
           <MessageSquare className="h-5 w-5 mb-1" />
-          <span className="text-[11px] leading-none">Chat</span>
+          <span className="text-[11px] leading-none">{t.nav.chat}</span>
         </Link>
 
         {/* 4. More */}
@@ -87,10 +89,10 @@ export function BottomNav() {
               ? "text-blue-600 dark:text-blue-400 font-semibold"
               : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
           )}
-          aria-label="More options"
+          aria-label={t.nav.more}
         >
           <Menu className="h-5 w-5 mb-1" />
-          <span className="text-[11px] leading-none">More</span>
+          <span className="text-[11px] leading-none">{t.nav.more}</span>
           {unreadCount > 0 && (
             <span className="absolute top-2 right-6 h-2 w-2 rounded-full bg-rose-500" />
           )}

@@ -7,10 +7,12 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Search, Bell, Menu, X, PlusCircle, ArrowLeft, Shield, WifiOff } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
+import { LanguageToggle } from "./language-toggle";
 import { useVisitor } from "@/contexts/visitor-context";
 import { useNotifications } from "@/contexts/notification-context";
 import { useIsAdminSession } from "@/hooks/use-admin-session";
 import { useOnlineStatus } from "@/hooks/use-online-status";
+import { useLanguage } from "@/contexts/language-context";
 
 interface NavbarProps {
   onSearchChange?: (query: string) => void;
@@ -22,6 +24,7 @@ export function Navbar({ onSearchChange, searchValue = "", showSearch = true }: 
   const router = useRouter();
   const { visitor } = useVisitor();
   const { unreadCount } = useNotifications();
+  const { t } = useLanguage();
   const isAdmin = useIsAdminSession();
   const isOnline = useOnlineStatus();
   const [localSearch, setLocalSearch] = useState(searchValue);
@@ -67,7 +70,7 @@ export function Navbar({ onSearchChange, searchValue = "", showSearch = true }: 
                   setLocalSearch(e.target.value);
                   if (onSearchChange) onSearchChange(e.target.value);
                 }}
-                placeholder="Search water resources, locations..."
+                placeholder={t.nav.searchPlaceholder}
                 className="w-full h-10 pl-10 pr-4 rounded-full bg-slate-100 dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-transparent focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-all"
               />
             </div>
@@ -84,7 +87,7 @@ export function Navbar({ onSearchChange, searchValue = "", showSearch = true }: 
               title="You are currently offline. Tap to view offline mode."
             >
               <WifiOff className="h-3 w-3" />
-              <span>Offline Mode</span>
+              <span>{t.nav.offlineMode}</span>
             </Link>
           )}
 
@@ -97,7 +100,7 @@ export function Navbar({ onSearchChange, searchValue = "", showSearch = true }: 
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               <Shield className="h-3 w-3 text-amber-300" />
-              <span>Back to Admin</span>
+              <span>{t.nav.backToAdmin}</span>
             </Link>
           )}
 
@@ -107,8 +110,11 @@ export function Navbar({ onSearchChange, searchValue = "", showSearch = true }: 
             className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-900/60 transition-colors"
           >
             <PlusCircle className="h-3.5 w-3.5" />
-            <span>Submit Water Point</span>
+            <span>{t.nav.submit}</span>
           </Link>
+
+          {/* Language Toggle Button */}
+          <LanguageToggle />
 
           {/* Theme Toggle */}
           <ThemeToggle />

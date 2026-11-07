@@ -23,12 +23,15 @@ import { BottomNav } from "@/components/layout/bottom-nav";
 import { useVisitor } from "@/contexts/visitor-context";
 import { useNotifications } from "@/contexts/notification-context";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { LanguageToggle } from "@/components/layout/language-toggle";
 import { useSystemSettings } from "@/hooks/use-system-settings";
+import { useLanguage } from "@/contexts/language-context";
 
 export default function MorePage() {
   const { visitor } = useVisitor();
   const { unreadCount } = useNotifications();
   const { settings } = useSystemSettings();
+  const { t } = useLanguage();
 
   const cleanHotline = (settings.emergencyHotline || "0917-123-4567").replace(/[^\d+]/g, "");
 
@@ -44,13 +47,14 @@ export default function MorePage() {
           <div className="flex items-center justify-between pb-1">
             <div>
               <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                Menu & Community Tools
+                {t.more.title}
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Quick navigation, emergency hotlines & community options
+                {t.more.subtitle}
               </p>
             </div>
-            <div className="sm:hidden">
+            <div className="flex items-center gap-1.5 sm:hidden">
+              <LanguageToggle />
               <ThemeToggle />
             </div>
           </div>
@@ -71,11 +75,11 @@ export default function MorePage() {
                     {visitor?.displayName || "Resident Contributor"}
                   </h3>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/40 shrink-0">
-                    Active
+                    {t.more.activeBadge}
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                  Community Contributor • Tap to view profile & settings
+                  {t.more.contributorSubtitle}
                 </p>
               </div>
             </div>
@@ -94,10 +98,10 @@ export default function MorePage() {
                 <PlusCircle className="h-4.5 w-4.5" />
               </div>
               <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-tight">
-                Submit Source
+                {t.more.submitSourceTitle}
               </span>
               <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-tight line-clamp-2">
-                Report a well, spring, or water point
+                {t.more.submitSourceDesc}
               </span>
             </Link>
 
@@ -111,10 +115,10 @@ export default function MorePage() {
                 <Bookmark className="h-4.5 w-4.5" />
               </div>
               <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-tight">
-                Saved Sources
+                {t.more.savedSourcesTitle}
               </span>
               <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-tight line-clamp-2">
-                Bookmarked points for quick access
+                {t.more.savedSourcesDesc}
               </span>
             </Link>
 
@@ -129,7 +133,7 @@ export default function MorePage() {
               </div>
               <div className="flex items-center gap-1.5 w-full">
                 <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-tight">
-                  Alerts & Bulletins
+                  {t.more.alertsTitle}
                 </span>
                 {unreadCount > 0 && (
                   <span className="px-1.5 py-0.2 rounded-full text-[9px] font-extrabold bg-rose-500 text-white shrink-0">
@@ -138,7 +142,7 @@ export default function MorePage() {
                 )}
               </div>
               <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-tight line-clamp-2">
-                Municipal warnings & dry spell news
+                {t.more.alertsDesc}
               </span>
             </Link>
 
@@ -152,10 +156,10 @@ export default function MorePage() {
                 <WifiOff className="h-4.5 w-4.5" />
               </div>
               <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-tight">
-                Offline Mode
+                {t.more.offlineTitle}
               </span>
               <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-tight line-clamp-2">
-                Instant directory storage & backup
+                {t.more.offlineDesc}
               </span>
             </Link>
           </div>
@@ -169,14 +173,14 @@ export default function MorePage() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white">
-                    Irosin MDRRMO Hotline
+                    {t.more.hotlineTitle}
                   </h4>
                   <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-200">
-                    24/7
+                    {t.more.hotlineBadge}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5 leading-snug">
-                  Emergency water relief, dry spell delivery & disaster rescue
+                  {t.more.hotlineDesc}
                 </p>
               </div>
             </div>
@@ -186,7 +190,7 @@ export default function MorePage() {
               className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold text-xs shadow-xs transition-transform cursor-pointer w-full sm:w-auto shrink-0 select-none"
             >
               <PhoneCall className="h-3.5 w-3.5" />
-              <span>Call {settings.emergencyHotline || "0917-123-4567"}</span>
+              <span>{t.more.callBtn} {settings.emergencyHotline || "0917-123-4567"}</span>
             </a>
           </div>
 
@@ -200,7 +204,7 @@ export default function MorePage() {
               <div className="flex items-center gap-3">
                 <Info className="h-4 w-4 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
                 <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                  About IroWa & Municipal Mission
+                  {t.more.aboutLink}
                 </span>
               </div>
               <ChevronRight className="h-4 w-4 text-slate-400" />
@@ -214,7 +218,7 @@ export default function MorePage() {
               <div className="flex items-center gap-3">
                 <Shield className="h-4 w-4 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
                 <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                  Privacy Policy & Data Transparency
+                  {t.more.privacyLink}
                 </span>
               </div>
               <ChevronRight className="h-4 w-4 text-slate-400" />
@@ -228,7 +232,7 @@ export default function MorePage() {
               <div className="flex items-center gap-3">
                 <FileText className="h-4 w-4 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
                 <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                  Community Terms of Service
+                  {t.more.termsLink}
                 </span>
               </div>
               <ChevronRight className="h-4 w-4 text-slate-400" />
