@@ -22,8 +22,6 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { useVisitor } from "@/contexts/visitor-context";
 import { useNotifications } from "@/contexts/notification-context";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { LanguageToggle } from "@/components/layout/language-toggle";
 import { useSystemSettings } from "@/hooks/use-system-settings";
 import { useLanguage } from "@/contexts/language-context";
 
@@ -44,19 +42,13 @@ export default function MorePage() {
 
         <main className="flex-1 min-w-0 h-full overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-2xl mx-auto w-full space-y-4 pb-28 md:pb-12">
           {/* Header */}
-          <div className="flex items-center justify-between pb-1">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                {t.more.title}
-              </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                {t.more.subtitle}
-              </p>
-            </div>
-            <div className="flex items-center gap-1.5 sm:hidden">
-              <LanguageToggle />
-              <ThemeToggle />
-            </div>
+          <div className="pb-1">
+            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+              {t.more.title}
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {t.more.subtitle}
+            </p>
           </div>
 
           {/* User Profile Card */}
