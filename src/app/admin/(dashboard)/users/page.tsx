@@ -27,10 +27,12 @@ import {
   VisitorSessionRecord,
 } from "@/actions/visitor-actions";
 import { cn } from "@/lib/utils";
+import { getAdminCache, setAdminCache, ADMIN_CACHE_KEYS } from "@/lib/cache/admin-cache";
 
 export default function AdminUsersModerationPage() {
-  const [sessions, setSessions] = useState<VisitorSessionRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getAdminCache<VisitorSessionRecord[]>(ADMIN_CACHE_KEYS.USERS);
+  const [sessions, setSessions] = useState<VisitorSessionRecord[]>(cached || []);
+  const [loading, setLoading] = useState(!cached);
   const [search, setSearch] = useState("");
   const [filterTab, setFilterTab] = useState<"all" | "active" | "restricted">("all");
   const [updatingVisitorId, setUpdatingVisitorId] = useState<string | null>(null);
@@ -43,6 +45,7 @@ export default function AdminUsersModerationPage() {
     try {
       const data = await getVisitorSessionsAction();
       setSessions(data);
+      setAdminCache(ADMIN_CACHE_KEYS.USERS, data);
     } catch (err) {
       console.error("Failed to load visitor sessions:", err);
     } finally {
@@ -159,7 +162,7 @@ export default function AdminUsersModerationPage() {
         subtitle="Live registry of anonymous citizen sessions, display names, and rate-limiting moderation controls."
         isLive={isLive}
         lastSync={lastSync}
-        isRefreshing={isRefreshing || loading}
+        isRefreshing={isRefreshing}
         onRefresh={triggerRefresh}
         badgeCount={sessions.length}
         compact={true}

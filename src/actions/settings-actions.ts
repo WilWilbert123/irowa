@@ -143,6 +143,8 @@ export async function updateSystemSettingsAction(
     await logAdminAction("UPDATE_APPLICATION_SETTINGS", "application_settings", "settings", updates);
     revalidatePath("/admin/settings");
     revalidatePath("/home");
+    revalidatePath("/more");
+    revalidatePath("/about");
 
     return { success: true };
   } catch (err: any) {

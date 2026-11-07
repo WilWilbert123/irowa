@@ -25,11 +25,15 @@ import { getAllReportsAction } from "@/actions/report-actions";
 import { AdminDashboardMetrics } from "@/types/admin";
 import { useAdminRealtime } from "@/hooks/use-admin-realtime";
 import { formatDate } from "@/lib/utils/date-utils";
+import { getAdminCache, setAdminCache, ADMIN_CACHE_KEYS } from "@/lib/cache/admin-cache";
 
 export default function AdminOverviewPage() {
-  const [metrics, setMetrics] = useState<AdminDashboardMetrics | null>(null);
-  const [recentReports, setRecentReports] = useState<RecentReportItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const cachedMetrics = getAdminCache<AdminDashboardMetrics>(ADMIN_CACHE_KEYS.OVERVIEW_METRICS);
+  const cachedReports = getAdminCache<RecentReportItem[]>(ADMIN_CACHE_KEYS.OVERVIEW_REPORTS);
+
+  const [metrics, setMetrics] = useState<AdminDashboardMetrics | null>(cachedMetrics);
+  const [recentReports, setRecentReports] = useState<RecentReportItem[]>(cachedReports || []);
+  const [isLoading, setIsLoading] = useState(!cachedMetrics);
 
   const loadDashboardData = useCallback(async () => {
     try {
@@ -39,6 +43,7 @@ export default function AdminOverviewPage() {
       ]);
 
       setMetrics(metricsData);
+      setAdminCache(ADMIN_CACHE_KEYS.OVERVIEW_METRICS, metricsData);
 
       // Map real reports to recent reports format
       const mappedReports: RecentReportItem[] = (reportsData || []).slice(0, 5).map((rep) => ({
@@ -56,6 +61,7 @@ export default function AdminOverviewPage() {
       }));
 
       setRecentReports(mappedReports);
+      setAdminCache(ADMIN_CACHE_KEYS.OVERVIEW_REPORTS, mappedReports);
     } catch (err) {
       console.error("Failed to load dashboard metrics:", err);
     } finally {
@@ -100,7 +106,7 @@ export default function AdminOverviewPage() {
         }}
         isLive={isLive}
         lastSync={lastSync}
-        isRefreshing={isRefreshing || isLoading}
+        isRefreshing={isRefreshing}
         onRefresh={triggerRefresh}
       />
 
@@ -155,7 +161,7 @@ export default function AdminOverviewPage() {
           iconBg="bg-purple-50 dark:bg-purple-950/40"
           change={`${m.totalChatMessages} community messages`}
           isPositive={true}
-          badge="Real-time"
+          badge="Active"
         />
       </div>
 

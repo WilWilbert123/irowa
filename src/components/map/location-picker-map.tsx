@@ -15,6 +15,7 @@ interface LocationPickerMapProps {
   longitude: number;
   onChange: (lat: number, lng: number) => void;
   className?: string;
+  defaultLayer?: "standard" | "satellite";
 }
 
 const TILE_LAYERS = {
@@ -37,13 +38,14 @@ export default function LocationPickerMap({
   longitude,
   onChange,
   className = "h-[340px]",
+  defaultLayer = "satellite",
 }: LocationPickerMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
 
-  const [activeLayer, setActiveLayer] = useState<"standard" | "satellite">("satellite");
+  const [activeLayer, setActiveLayer] = useState<"standard" | "satellite">(defaultLayer);
   const { isLocating, requestLocation } = useGeolocation();
 
   // Keep a ref to the latest onChange to avoid re-binding handlers

@@ -22,10 +22,12 @@ import { formatDate } from "@/lib/utils/date-utils";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { useAdminRealtime } from "@/hooks/use-admin-realtime";
 import { cn } from "@/lib/utils";
+import { getAdminCache, setAdminCache, ADMIN_CACHE_KEYS } from "@/lib/cache/admin-cache";
 
 export default function AdminAuditLogsPage() {
-  const [logs, setLogs] = useState<AuditLogRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getAdminCache<AuditLogRow[]>(ADMIN_CACHE_KEYS.AUDIT_LOGS);
+  const [logs, setLogs] = useState<AuditLogRow[]>(cached || []);
+  const [loading, setLoading] = useState(!cached);
   const [search, setSearch] = useState("");
   const [filterEntity, setFilterEntity] = useState<string>("all");
 
@@ -33,6 +35,7 @@ export default function AdminAuditLogsPage() {
     try {
       const data = await getAuditLogs();
       setLogs(data);
+      setAdminCache(ADMIN_CACHE_KEYS.AUDIT_LOGS, data);
     } catch (err) {
       console.error("Failed to load audit logs", err);
     } finally {
@@ -80,7 +83,7 @@ export default function AdminAuditLogsPage() {
         subtitle="Immutable, real-time record of administrative actions, moderation events, and database mutations."
         isLive={isLive}
         lastSync={lastSync}
-        isRefreshing={isRefreshing || loading}
+        isRefreshing={isRefreshing}
         onRefresh={triggerRefresh}
         badgeCount={logs.length}
         compact={true}

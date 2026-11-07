@@ -30,11 +30,15 @@ import { formatDate } from "@/lib/utils/date-utils";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { useAdminRealtime } from "@/hooks/use-admin-realtime";
 import { cn } from "@/lib/utils";
+import { getAdminCache, setAdminCache, ADMIN_CACHE_KEYS } from "@/lib/cache/admin-cache";
 
 export default function AdminChatManagementPage() {
-  const [rooms, setRooms] = useState<ChatRoom[]>([]);
-  const [reportedMessages, setReportedMessages] = useState<ChatMessage[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedRooms = getAdminCache<ChatRoom[]>(ADMIN_CACHE_KEYS.CHAT_ROOMS);
+  const cachedFlagged = getAdminCache<ChatMessage[]>(ADMIN_CACHE_KEYS.CHAT_FLAGGED);
+
+  const [rooms, setRooms] = useState<ChatRoom[]>(cachedRooms || []);
+  const [reportedMessages, setReportedMessages] = useState<ChatMessage[]>(cachedFlagged || []);
+  const [loading, setLoading] = useState(!cachedRooms);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"rooms" | "flagged">("rooms");
   const [moderatingId, setModeratingId] = useState<string | null>(null);
@@ -47,6 +51,8 @@ export default function AdminChatManagementPage() {
       ]);
       setRooms(roomsData);
       setReportedMessages(flaggedData);
+      setAdminCache(ADMIN_CACHE_KEYS.CHAT_ROOMS, roomsData);
+      setAdminCache(ADMIN_CACHE_KEYS.CHAT_FLAGGED, flaggedData);
     } catch (err) {
       console.error("Failed to load chat data", err);
     } finally {
@@ -103,7 +109,7 @@ export default function AdminChatManagementPage() {
         subtitle="Live discussion channels for each water resource and community safety content filtering."
         isLive={isLive}
         lastSync={lastSync}
-        isRefreshing={isRefreshing || loading}
+        isRefreshing={isRefreshing}
         onRefresh={triggerRefresh}
         badgeCount={reportedMessages.length}
         compact={true}

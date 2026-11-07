@@ -31,10 +31,12 @@ import { formatDate } from "@/lib/utils/date-utils";
 import { useAdminRealtime } from "@/hooks/use-admin-realtime";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { cn } from "@/lib/utils";
+import { getAdminCache, setAdminCache, ADMIN_CACHE_KEYS } from "@/lib/cache/admin-cache";
 
 export default function AdminSubmissionsPage() {
-  const [submissions, setSubmissions] = useState<WaterSubmission[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedSubmissions = getAdminCache<WaterSubmission[]>(ADMIN_CACHE_KEYS.SUBMISSIONS);
+  const [submissions, setSubmissions] = useState<WaterSubmission[]>(cachedSubmissions || []);
+  const [loading, setLoading] = useState(!cachedSubmissions);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
@@ -45,6 +47,7 @@ export default function AdminSubmissionsPage() {
     try {
       const data = await getAllSubmissionsAction();
       setSubmissions(data);
+      setAdminCache(ADMIN_CACHE_KEYS.SUBMISSIONS, data);
     } catch (err) {
       console.error("Failed to load submissions", err);
     } finally {
@@ -66,9 +69,11 @@ export default function AdminSubmissionsPage() {
     try {
       const res = await approveSubmissionAction(id);
       if (res.success) {
-        setSubmissions((prev) =>
-          prev.map((s) => (s.id === id ? { ...s, status: "approved" } : s))
-        );
+        setSubmissions((prev) => {
+          const updated = prev.map((s) => (s.id === id ? { ...s, status: "approved" as const } : s));
+          setAdminCache(ADMIN_CACHE_KEYS.SUBMISSIONS, updated);
+          return updated;
+        });
       } else {
         alert(res.error || "Failed to approve submission");
       }
@@ -88,13 +93,15 @@ export default function AdminSubmissionsPage() {
     try {
       const res = await rejectSubmissionAction(id, rejectReason.trim());
       if (res.success) {
-        setSubmissions((prev) =>
-          prev.map((s) =>
+        setSubmissions((prev) => {
+          const updated = prev.map((s) =>
             s.id === id
-              ? { ...s, status: "rejected", rejection_reason: rejectReason.trim() }
+              ? { ...s, status: "rejected" as const, rejection_reason: rejectReason.trim() }
               : s
-          )
-        );
+          );
+          setAdminCache(ADMIN_CACHE_KEYS.SUBMISSIONS, updated);
+          return updated;
+        });
         setRejectingId(null);
         setRejectReason("");
       } else {
@@ -138,7 +145,7 @@ export default function AdminSubmissionsPage() {
         subtitle="Review and verify citizen-proposed water sources before publishing them to the public map."
         isLive={isLive}
         lastSync={lastSync}
-        isRefreshing={isRefreshing || loading}
+        isRefreshing={isRefreshing}
         onRefresh={triggerRefresh}
         badgeCount={pendingCount}
         compact={true}

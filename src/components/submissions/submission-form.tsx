@@ -286,6 +286,7 @@ export function SubmissionForm() {
         <LocationPickerMap
           latitude={latitude}
           longitude={longitude}
+          defaultLayer="standard"
           onChange={(newLat, newLng) => {
             setLatitude(newLat);
             setLongitude(newLng);
