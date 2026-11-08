@@ -15,6 +15,7 @@ import { WaterSource } from "@/types/water";
 import { AVAILABILITY_STATUS_LABELS, CATEGORY_LABELS } from "@/lib/utils/constants";
 import { formatDate } from "@/lib/utils/date-utils";
 import { getDirectionsUrl } from "@/lib/map/map-utils";
+import { getPublicStorageUrl } from "@/lib/utils/image-utils";
 
 export default function AdminWaterSourceDetailPage() {
   const params = useParams();
@@ -184,7 +185,14 @@ export default function AdminWaterSourceDetailPage() {
                 {source.photos.map((photo: any) => (
                   <div key={photo.id} className="relative aspect-video rounded-lg overflow-hidden border border-border bg-muted">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={photo.storage_path} alt={photo.caption || "Resource photo"} className="w-full h-full object-cover" />
+                    <img 
+                      src={getPublicStorageUrl(photo.storage_path)} 
+                      alt={photo.caption || "Resource photo"} 
+                      className="w-full h-full object-cover" 
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/images/irosin-map-placeholder.svg";
+                      }}
+                    />
                     {photo.caption && (
                       <div className="absolute inset-x-0 bottom-0 bg-black/60 p-1 text-[11px] text-white truncate">
                         {photo.caption}

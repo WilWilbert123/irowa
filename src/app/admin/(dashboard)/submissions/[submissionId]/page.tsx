@@ -37,13 +37,20 @@ const LocationPickerMap = dynamic(
 );
 
 function resolvePhotoUrl(storagePath: string): string {
-  if (!storagePath) return "/images/water-placeholder.jpg";
-  if (storagePath.startsWith("http://") || storagePath.startsWith("https://") || storagePath.startsWith("/")) {
+  if (!storagePath) return "/images/irosin-map-placeholder.svg";
+  if (
+    storagePath.startsWith("http://") || 
+    storagePath.startsWith("https://") || 
+    storagePath.startsWith("/") ||
+    storagePath.startsWith("data:") ||
+    storagePath.startsWith("blob:")
+  ) {
     return storagePath;
   }
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (supabaseUrl) {
-    return `${supabaseUrl}/storage/v1/object/public/submission-photos/${storagePath}`;
+    const bucket = storagePath.startsWith("sub-") ? "submission-photos" : "water-photos";
+    return `${supabaseUrl}/storage/v1/object/public/${bucket}/${storagePath}`;
   }
   return storagePath;
 }
@@ -324,6 +331,9 @@ export default function AdminSubmissionDetailPage() {
                         src={photoUrl}
                         alt={`Submission photo ${idx + 1}`}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = "/images/irosin-map-placeholder.svg";
+                        }}
                       />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
                         <span className="p-2 rounded-full bg-white/90 text-slate-900 shadow-md">
@@ -483,6 +493,9 @@ export default function AdminSubmissionDetailPage() {
                 src={resolvePhotoUrl(submission.photos[selectedPhotoIndex].storage_path)}
                 alt={`Submission photo ${selectedPhotoIndex + 1}`}
                 className="max-h-full max-w-full object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "/images/irosin-map-placeholder.svg";
+                }}
               />
 
               {/* Prev / Next controls */}

@@ -1,8 +1,8 @@
 // src/lib/supabase/storage.ts
-import { createClient } from "./client";
+import { uploadStorageImageAction } from "@/actions/storage-actions";
 
-export const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+export const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 export interface StorageUploadResult {
   path: string;
@@ -25,34 +25,17 @@ export async function uploadWaterImage(
   if (file.size > MAX_FILE_SIZE) {
     return {
       success: false,
-      error: "Image exceeds 5MB size limit.",
+      error: "Image exceeds 10MB size limit.",
     };
   }
 
-  const supabase = createClient();
-  const fileExt = file.name.split(".").pop();
-  const fileName = `${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
-  const filePath = `${fileName}`;
-
   try {
-    const { data, error } = await supabase.storage.from(bucket).upload(filePath, file, {
-      cacheControl: "3600",
-      upsert: false,
-    });
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("bucket", bucket);
 
-    if (error) {
-      return { success: false, error: error.message };
-    }
-
-    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
-
-    return {
-      success: true,
-      data: {
-        path: data.path,
-        url: urlData.publicUrl,
-      },
-    };
+    const res = await uploadStorageImageAction(formData);
+    return res;
   } catch (err: any) {
     return {
       success: false,
