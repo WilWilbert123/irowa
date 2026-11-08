@@ -30,6 +30,7 @@ import {
   syncWaterSourcePhotosAction 
 } from "@/actions/water-actions";
 import { uploadWaterImage, ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE } from "@/lib/supabase/storage";
+import { getPublicStorageUrl } from "@/lib/utils/image-utils";
 import { 
   WATER_CATEGORIES, 
   AVAILABILITY_STATUSES, 
@@ -571,9 +572,12 @@ export default function EditWaterSourcePage() {
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={photo.storage_path}
+                      src={getPublicStorageUrl(photo.storage_path)}
                       alt={photo.caption || "Water resource"}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/images/irosin-map-placeholder.svg";
+                      }}
                     />
 
                     {/* Primary Badge */}
