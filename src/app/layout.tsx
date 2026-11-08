@@ -1,5 +1,6 @@
 // src/app/layout.tsx
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { AppProviders } from "@/components/providers/app-providers";
 import { AnnouncementBanner } from "@/components/notifications/announcement-banner";
 import "./globals.css";
@@ -37,7 +38,9 @@ export default function RootLayout({
       <body className="h-full w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased selection:bg-blue-500 selection:text-white flex flex-col overflow-hidden">
         <AppProviders>
           <div className="flex flex-col h-dvh w-full overflow-hidden">
-            <AnnouncementBanner />
+            <Suspense fallback={null}>
+              <AnnouncementBanner />
+            </Suspense>
             <div className="flex-1 min-h-0 w-full overflow-hidden flex flex-col relative">
               {children}
             </div>

@@ -9,6 +9,7 @@ import { MAP_CONFIG } from "@/lib/map/map-config";
 import { createCategoryDivIcon, createLocationMarkerIcon, createStartLocationIcon } from "@/lib/map/map-icons";
 import { InAppRoute, fetchInAppRoute } from "@/lib/map/map-utils";
 import { MapCategoryFilter } from "./map-category-filter";
+import { MapSearchBar } from "./map-search-bar";
 import { MapControls } from "./map-controls";
 import { MarkerPopupCard } from "./marker-popup-card";
 import { DirectionsPanel } from "./directions-panel";
@@ -82,6 +83,7 @@ export function MapView({
   const routeGroupRef = useRef<L.LayerGroup | null>(null);
   const userMarkerRef = useRef<L.Marker | null>(null);
   const editorMarkerRef = useRef<L.Marker | null>(null);
+  const tempPopupRef = useRef<L.Popup | null>(null);
   const onMapClickRef = useRef(onMapClickCoordinates);
 
   useEffect(() => {
@@ -361,6 +363,67 @@ export function MapView({
     }
   };
 
+  const handleFlyToLocation = (item: {
+    lat: number;
+    lng: number;
+    name: string;
+    zoom?: number;
+    source?: WaterSourceWithPhotos;
+  }) => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    const targetZoom = item.zoom || (item.source ? 16 : 15);
+    map.flyTo([item.lat, item.lng], targetZoom, { duration: 1.2 });
+
+    if (item.source) {
+      onSelectSource(item.source);
+      if (tempPopupRef.current) {
+        try {
+          map.closePopup(tempPopupRef.current);
+        } catch {
+          // ignore
+        }
+        tempPopupRef.current = null;
+      }
+    } else {
+      onSelectSource(null);
+      if (tempPopupRef.current) {
+        try {
+          map.closePopup(tempPopupRef.current);
+        } catch {
+          // ignore
+        }
+        tempPopupRef.current = null;
+      }
+
+      const popup = L.popup({
+        closeButton: false,
+        autoClose: true,
+        className: "custom-barangay-popup",
+        offset: [0, -10],
+      })
+        .setLatLng([item.lat, item.lng])
+        .setContent(`
+          <div style="font-family: inherit; padding: 4px 6px; text-align: center;">
+            <div style="font-weight: 700; font-size: 13px; color: #1d4ed8;">Barangay ${item.name}</div>
+            <div style="font-size: 10px; color: #64748b; margin-top: 1px;">Irosin, Sorsogon</div>
+          </div>
+        `)
+        .openOn(map);
+
+      tempPopupRef.current = popup;
+
+      setTimeout(() => {
+        try {
+          map.closePopup(popup);
+        } catch {
+          // ignore
+        }
+      }, 5000);
+    }
+  };
+
   const handleGetDirections = async (source: WaterSourceWithPhotos) => {
     setIsRouting(true);
     onSelectSource(null); // dismiss card to show route
@@ -412,6 +475,14 @@ export function MapView({
         className="w-full h-full z-0"
         style={{ width: "100%", height: "100%" }}
       />
+
+      {/* Floating Expandable Search Bar (Top Left) */}
+      {!isEditorMode && !activeRoute && (
+        <MapSearchBar
+          sources={sources}
+          onFlyToLocation={handleFlyToLocation}
+        />
+      )}
 
       {/* Floating Category Filter */}
       {!isEditorMode && !activeRoute && (

@@ -55,8 +55,8 @@ export default function AdminOverviewPage() {
           rep.status === "pending"
             ? "Pending"
             : rep.status === "investigating"
-            ? "Investigating"
-            : "Resolved",
+              ? "Investigating"
+              : "Resolved",
         waterSourceId: rep.water_source_id,
       }));
 
@@ -323,12 +323,12 @@ export default function AdminOverviewPage() {
           <div className="flex items-center gap-2">
             <Activity className="h-4 w-4 text-blue-500" />
             <h3 className="font-bold text-base text-slate-900 dark:text-white">
-              Live Operations & Activity Feed
+              Live Feed
             </h3>
           </div>
           <span className="text-[11px] font-semibold text-emerald-500 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Active Realtime Stream
+            Active Stream
           </span>
         </div>
 

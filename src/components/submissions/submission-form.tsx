@@ -1,16 +1,28 @@
 // src/components/submissions/submission-form.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useVisitor } from "@/contexts/visitor-context";
-import { submitWaterSourceAction } from "@/actions/submission-actions";
-import { uploadWaterImage } from "@/lib/supabase/storage";
+import { submitWaterSourceAction, attachSubmissionPhotosAction } from "@/actions/submission-actions";
+import { uploadWaterImage, ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE } from "@/lib/supabase/storage";
 import { waterCategories, waterAvailabilityStatuses } from "@/lib/validations/water-schema";
 import { IROSIN_BARANGAYS, IROSIN_COORDINATES } from "@/lib/utils/constants";
-import { MapPin, Upload, AlertCircle, CheckCircle2, Navigation, SlidersHorizontal } from "lucide-react";
+import { 
+  MapPin, 
+  Upload, 
+  AlertCircle, 
+  CheckCircle2, 
+  Navigation, 
+  SlidersHorizontal,
+  Trash2,
+  Image as ImageIcon,
+  Loader2,
+  X
+} from "lucide-react";
 import { useGeolocation } from "@/hooks/use-geolocation";
+import { cn } from "@/lib/utils";
 
 const LocationPickerMap = dynamic(
   () => import("@/components/map/location-picker-map"),
@@ -25,10 +37,17 @@ const LocationPickerMap = dynamic(
   }
 );
 
+interface StagedSubmissionPhoto {
+  id: string;
+  file: File;
+  previewUrl: string;
+  sizeFormatted: string;
+}
+
 export function SubmissionForm() {
   const router = useRouter();
   const { visitor, setDisplayName } = useVisitor();
-  const { location, isLocating, requestLocation } = useGeolocation();
+  const { isLocating, requestLocation } = useGeolocation();
 
   const [submitterName, setSubmitterName] = useState(visitor?.displayName || "");
   const [name, setName] = useState("");
@@ -43,10 +62,32 @@ export function SubmissionForm() {
   const [latitude, setLatitude] = useState(IROSIN_COORDINATES.lat);
   const [longitude, setLongitude] = useState(IROSIN_COORDINATES.lng);
 
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  // Photos State (1 - 6 images allowed)
+  const [stagedPhotos, setStagedPhotos] = useState<StagedSubmissionPhoto[]>([]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const maxPhotosAllowed = 6;
+  const totalPhotosCount = stagedPhotos.length;
+  const remainingSlots = Math.max(0, maxPhotosAllowed - totalPhotosCount);
+
+  // Upload Progress & Submitting State
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatusText, setUploadStatusText] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Clean up object URLs on unmount
+  useEffect(() => {
+    return () => {
+      stagedPhotos.forEach((photo) => {
+        try {
+          URL.revokeObjectURL(photo.previewUrl);
+        } catch {
+          // ignore
+        }
+      });
+    };
+  }, [stagedPhotos]);
 
   const handleUseCurrentLocation = async () => {
     const pos = await requestLocation();
@@ -56,16 +97,81 @@ export function SubmissionForm() {
     }
   };
 
+  // Handle Photo File Selection (Cap at 6 images)
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setErrorMsg(null);
+
+    if (totalPhotosCount >= maxPhotosAllowed) {
+      setErrorMsg(`Maximum limit reached: You can attach up to ${maxPhotosAllowed} images.`);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
     }
+
+    const filesArray = Array.from(files);
+    const validNewPhotos: StagedSubmissionPhoto[] = [];
+
+    for (const file of filesArray) {
+      if (validNewPhotos.length >= remainingSlots) {
+        break;
+      }
+
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        setErrorMsg("Only JPG, PNG, and WebP image formats are supported.");
+        continue;
+      }
+
+      if (file.size > MAX_FILE_SIZE) {
+        setErrorMsg(`"${file.name}" exceeds the 5MB size limit.`);
+        continue;
+      }
+
+      const previewUrl = URL.createObjectURL(file);
+      const sizeKB = Math.round(file.size / 1024);
+      const sizeFormatted = sizeKB > 1024 ? `${(sizeKB / 1024).toFixed(1)} MB` : `${sizeKB} KB`;
+
+      validNewPhotos.push({
+        id: `photo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        file,
+        previewUrl,
+        sizeFormatted,
+      });
+    }
+
+    if (validNewPhotos.length > 0) {
+      setStagedPhotos((prev) => [...prev, ...validNewPhotos]);
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // Remove a staged photo
+  const handleRemovePhoto = (id: string) => {
+    setStagedPhotos((prev) => {
+      const target = prev.find((p) => p.id === id);
+      if (target?.previewUrl) {
+        try {
+          URL.revokeObjectURL(target.previewUrl);
+        } catch {
+          // ignore
+        }
+      }
+      return prev.filter((p) => p.id !== id);
+    });
+  };
+
+  // Helper to convert file to Data URL if storage fails
+  const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -81,19 +187,44 @@ export function SubmissionForm() {
 
     setIsSubmitting(true);
     setErrorMsg(null);
+    setUploadProgress(5);
+    setUploadStatusText("Preparing suggestion submission...");
 
     try {
       // Save display name for visitor
       setDisplayName(submitterName);
 
-      // Upload photo if selected
-      let uploadedPhotoPath: string | null = null;
-      if (selectedFile) {
-        const uploadRes = await uploadWaterImage(selectedFile, "submission-photos");
-        if (uploadRes.success && uploadRes.data) {
-          uploadedPhotoPath = uploadRes.data.path;
+      // 1. Upload photos to Supabase storage if any
+      const uploadedPhotos: Array<{ storage_path: string }> = [];
+
+      if (stagedPhotos.length > 0) {
+        for (let i = 0; i < stagedPhotos.length; i++) {
+          const item = stagedPhotos[i];
+          const currentPercent = Math.round(10 + (i / stagedPhotos.length) * 65);
+          setUploadProgress(currentPercent);
+          setUploadStatusText(`Uploading photo ${i + 1} of ${stagedPhotos.length} to Supabase...`);
+
+          let storageUrl = "";
+          try {
+            const uploadRes = await uploadWaterImage(item.file, "submission-photos");
+            if (uploadRes.success && uploadRes.data?.url) {
+              storageUrl = uploadRes.data.url;
+            } else if (uploadRes.success && uploadRes.data?.path) {
+              storageUrl = uploadRes.data.path;
+            } else {
+              storageUrl = await fileToDataUrl(item.file);
+            }
+          } catch {
+            storageUrl = await fileToDataUrl(item.file);
+          }
+
+          uploadedPhotos.push({ storage_path: storageUrl });
         }
       }
+
+      // 2. Submit water source record
+      setUploadProgress(80);
+      setUploadStatusText("Submitting to municipal verification queue...");
 
       const res = await submitWaterSourceAction({
         visitor_id: visitor?.visitorId || `v_${Date.now()}`,
@@ -111,14 +242,22 @@ export function SubmissionForm() {
         longitude: Number(longitude),
       });
 
-      if ("success" in res && res.success) {
-        router.push("/submit-water/success");
-      } else {
-        setErrorMsg((res as any).error || "Failed to submit water source");
+      if (!res || !("success" in res) || !res.success) {
+        throw new Error((res as any)?.error || "Failed to submit water source");
       }
+
+      // 3. Link uploaded photos
+      if (uploadedPhotos.length > 0 && res.submissionId) {
+        setUploadProgress(92);
+        setUploadStatusText("Attaching photos to submission...");
+        await attachSubmissionPhotosAction(res.submissionId, uploadedPhotos);
+      }
+
+      setUploadProgress(100);
+      setUploadStatusText("Complete! Redirecting to confirmation...");
+      router.push("/submit-water/success");
     } catch (err: any) {
       setErrorMsg(err.message || "An unexpected error occurred");
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -126,13 +265,37 @@ export function SubmissionForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {errorMsg && (
-        <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 shrink-0" />
-          <span>{errorMsg}</span>
+        <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm flex items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="h-5 w-5 shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+          <button type="button" onClick={() => setErrorMsg(null)} className="text-rose-500 hover:text-rose-700">
+            <X className="h-4 w-4" />
+          </button>
         </div>
       )}
 
-      {/* Submitter details */}
+      {/* Upload & Submission Progress Bar */}
+      {isSubmitting && (
+        <div className="p-4 rounded-2xl bg-blue-50/90 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-900/60 shadow-sm space-y-2.5 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between text-xs font-bold text-blue-700 dark:text-blue-300">
+            <span className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-blue-600 dark:text-blue-400" />
+              <span>{uploadStatusText}</span>
+            </span>
+            <span className="font-mono text-sm">{uploadProgress}%</span>
+          </div>
+          <div className="w-full h-2.5 rounded-full bg-blue-100 dark:bg-blue-900/60 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-blue-600 to-teal-500 rounded-full transition-all duration-300 ease-out shadow-xs"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* 1. Submitter details */}
       <div className="space-y-4 p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
         <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
           1. Submitter Information
@@ -155,7 +318,7 @@ export function SubmissionForm() {
         </div>
       </div>
 
-      {/* Water Source Information */}
+      {/* 2. Water Source Information */}
       <div className="space-y-4 p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
         <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
           2. Water Resource Information
@@ -332,34 +495,90 @@ export function SubmissionForm() {
         </div>
       </div>
 
-      {/* Photo Attachment */}
+      {/* 4. Photo Attachment (1 - 6 Images) */}
       <div className="space-y-4 p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-          4. Photo Attachment (Optional)
-        </h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <ImageIcon className="h-4 w-4 text-emerald-500" />
+              <span>4. Photo Attachment (1 - 6 Photos)</span>
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Upload up to 6 photos showing the water flow, faucet, well, or surroundings.
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 self-start sm:self-auto shadow-2xs">
+            <span className={cn(
+              "w-2 h-2 rounded-full",
+              totalPhotosCount >= maxPhotosAllowed ? "bg-amber-500" : "bg-emerald-500"
+            )} />
+            <span>{totalPhotosCount} of {maxPhotosAllowed} Photos</span>
+          </div>
+        </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <label className="w-full sm:w-auto flex-1 flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors">
-            <Upload className="h-6 w-6 text-slate-400 mb-2" />
-            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-              Click to upload photo
-            </span>
-            <span className="text-[11px] text-slate-400 mt-1">PNG, JPG, or WebP up to 5MB</span>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-          </label>
+        {/* Staged Photos Grid */}
+        <div className="space-y-4">
+          {stagedPhotos.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {stagedPhotos.map((photo, idx) => (
+                <div
+                  key={photo.id}
+                  className="group relative aspect-video rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xs"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={photo.previewUrl}
+                    alt="Water photo preview"
+                    className="w-full h-full object-cover"
+                  />
 
-          {imagePreview && (
-            <div className="relative w-32 h-32 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shrink-0">
-              <img
-                src={imagePreview}
-                alt="Preview"
-                className="w-full h-full object-cover"
+                  {/* Order Tag */}
+                  <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/60 text-white font-bold text-[10px] backdrop-blur-xs">
+                    Photo #{idx + 1}
+                  </div>
+
+                  {/* File Size */}
+                  <div className="absolute bottom-1.5 left-2 text-[9px] font-mono font-bold text-white/90 bg-black/60 px-1.5 py-0.2 rounded-md backdrop-blur-xs">
+                    {photo.sizeFormatted}
+                  </div>
+
+                  {/* Remove Button */}
+                  <button
+                    type="button"
+                    onClick={() => handleRemovePhoto(photo.id)}
+                    className="absolute top-2 right-2 p-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-transform active:scale-90"
+                    title="Remove photo"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Upload Dropzone */}
+          {totalPhotosCount < maxPhotosAllowed ? (
+            <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-blue-300 dark:border-blue-900/60 hover:border-blue-500 dark:hover:border-blue-500 rounded-2xl cursor-pointer bg-blue-50/30 hover:bg-blue-50/60 dark:bg-blue-950/20 dark:hover:bg-blue-950/40 transition-colors group">
+              <Upload className="h-6 w-6 text-blue-600 dark:text-blue-400 mb-2 group-hover:scale-110 transition-transform" />
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                Click to choose photos ({remainingSlots} {remainingSlots === 1 ? "slot" : "slots"} left)
+              </span>
+              <span className="text-[11px] text-slate-400 mt-1">
+                PNG, JPG, or WebP up to 5MB (1 to 6 photos total)
+              </span>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleFileChange}
+                className="hidden"
               />
+            </label>
+          ) : (
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-medium flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>Maximum of 6 photos reached. To change a photo, remove one of the photos above.</span>
             </div>
           )}
         </div>
@@ -367,8 +586,11 @@ export function SubmissionForm() {
 
       {/* Additional Notes & Submission Notice */}
       <div className="p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-900/40 text-xs text-blue-900 dark:text-blue-200 space-y-1">
-        <span className="font-bold">Community Verification Process</span>
-        <p className="leading-relaxed">
+        <span className="font-bold flex items-center gap-1.5">
+          <CheckCircle2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          Community Verification Process
+        </span>
+        <p className="leading-relaxed text-[11px] text-slate-600 dark:text-slate-300">
           Every submission enters an administrative review queue to verify accurate positioning and water safety before being published to the public IroWa map.
         </p>
       </div>
@@ -377,12 +599,12 @@ export function SubmissionForm() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full h-12 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+        className="w-full h-12 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-98 disabled:opacity-50 text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
       >
         {isSubmitting ? (
           <>
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            <span>Submitting Suggestion...</span>
+            <Loader2 className="w-4 h-4 animate-spin text-white" />
+            <span>{uploadStatusText || "Submitting Suggestion..."}</span>
           </>
         ) : (
           <span>Submit for Verification</span>

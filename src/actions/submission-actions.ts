@@ -7,9 +7,12 @@ import {
   approveSubmission, 
   rejectSubmission, 
   getSubmissionsAdmin, 
-  getSubmissionById 
+  getSubmissionById,
+  MOCK_SUBMISSIONS
 } from "@/lib/services/submission-service";
 import { logAdminAction } from "@/lib/services/audit-service";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { revalidatePath } from "next/cache";
 
 export async function getAllSubmissionsAction() {
@@ -27,6 +30,10 @@ export async function submitWaterSourceAction(formData: any) {
   }
 
   const result = await submitWaterSource(validated.data);
+  if (result.success) {
+    revalidatePath("/admin/submissions");
+    revalidatePath("/admin");
+  }
   return result;
 }
 
@@ -54,4 +61,45 @@ export async function rejectSubmissionAction(
     revalidatePath("/admin/submissions");
   }
   return result;
+}
+
+export async function attachSubmissionPhotosAction(
+  submissionId: string,
+  photos: Array<{ storage_path: string }>
+) {
+  if (!photos || photos.length === 0) return { success: true };
+
+  if (!isSupabaseConfigured()) {
+    const mock = MOCK_SUBMISSIONS.find((s) => s.id === submissionId);
+    if (mock) {
+      mock.photos = photos.map((p, i) => ({
+        id: `sp_${Date.now()}_${i}`,
+        submission_id: submissionId,
+        storage_path: p.storage_path,
+        created_at: new Date().toISOString(),
+      }));
+    }
+    return { success: true };
+  }
+
+  try {
+    const admin = createAdminClient();
+    const { error } = await admin.from("submission_photos").insert(
+      photos.map((p) => ({
+        submission_id: submissionId,
+        storage_path: p.storage_path,
+      }))
+    );
+
+    if (error) {
+      console.error("Failed to insert submission photos:", error);
+      return { error: error.message };
+    }
+
+    revalidatePath("/admin/submissions");
+    revalidatePath(`/admin/submissions/${submissionId}`);
+    return { success: true };
+  } catch (err: any) {
+    return { error: err.message || "Failed to attach photos" };
+  }
 }
