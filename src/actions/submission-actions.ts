@@ -43,6 +43,7 @@ export async function approveSubmissionAction(submissionId: string) {
     await logAdminAction("APPROVE_SUBMISSION", "water_submission", submissionId);
     revalidatePath("/admin/submissions");
     revalidatePath("/admin/water-sources");
+    revalidatePath("/notifications");
     revalidatePath("/home");
   }
   return result;

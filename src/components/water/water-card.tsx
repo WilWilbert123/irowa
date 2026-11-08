@@ -35,7 +35,7 @@ export function WaterCard({ source }: { source: WaterSourceWithPhotos }) {
     <div className="group rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col h-full active:scale-[0.985]">
       {/* Image Header - Aspect 4/3 for better proportions on mobile */}
       <div className="relative w-full aspect-[4/3] sm:aspect-auto sm:h-48 bg-slate-100 dark:bg-slate-800 overflow-hidden">
-        <Link href={`/water/${source.slug}`} className="block w-full h-full">
+        <Link href={`/water/${source.slug}`} className="block relative w-full h-full">
           {!imgError && primaryPhoto ? (
             <Image
               src={primaryPhoto}

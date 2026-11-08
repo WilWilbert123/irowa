@@ -31,6 +31,7 @@ import {
 } from "@/actions/water-actions";
 import { uploadWaterImage, ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE } from "@/lib/supabase/storage";
 import { getPublicStorageUrl } from "@/lib/utils/image-utils";
+import { invalidateAdminCache, ADMIN_CACHE_KEYS } from "@/lib/cache/admin-cache";
 import { 
   WATER_CATEGORIES, 
   AVAILABILITY_STATUSES, 
@@ -353,6 +354,10 @@ export default function EditWaterSourcePage() {
       }
 
       await syncWaterSourcePhotosAction(waterId, finalPhotosPayload);
+
+      invalidateAdminCache(ADMIN_CACHE_KEYS.WATER_SOURCES);
+      invalidateAdminCache(ADMIN_CACHE_KEYS.OVERVIEW_METRICS);
+      invalidateAdminCache(ADMIN_CACHE_KEYS.ANALYTICS);
 
       router.push(`/admin/water-sources/${waterId}`);
     } catch (err) {

@@ -5,6 +5,7 @@ import { WaterSubmissionWithPhotos } from "@/types/submission";
 import { SubmissionFormData } from "../validations/submission-schema";
 import { checkRateLimit } from "../utils/rate-limit";
 import { slugify } from "../utils/formatters";
+import { sendPushNotificationToSubscribers } from "./notification-service";
 
 export const MOCK_SUBMISSIONS: WaterSubmissionWithPhotos[] = [
   {
@@ -233,6 +234,25 @@ export async function approveSubmission(
         }))
       );
     }
+
+    // Broadcast notification for newly approved submission
+    const locText = sub.barangay
+      ? `in ${sub.barangay.startsWith("Brgy.") ? sub.barangay : `Brgy. ${sub.barangay}`}`
+      : "in Irosin";
+
+    await admin.from("notifications").insert({
+      type: "new_water_source",
+      title: "New Water Source Verified",
+      body: `${sub.name} ${locText} has been officially verified and added to the IroWa interactive map.`,
+      water_source_id: newSource.id,
+      is_read: false,
+    });
+
+    sendPushNotificationToSubscribers({
+      title: "New Water Source Verified",
+      body: `${sub.name} ${locText} has been added to the IroWa map.`,
+      url: `/water/${newSource.id}`,
+    }).catch(() => {});
 
     return { success: true, publishedSourceId: newSource.id };
   } catch (err: any) {

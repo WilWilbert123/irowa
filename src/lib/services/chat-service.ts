@@ -213,7 +213,9 @@ export async function getChatRooms(): Promise<ChatRoomWithSource[]> {
           slug,
           category,
           barangay,
-          availability_status
+          availability_status,
+          is_published,
+          archived_at
         ),
         chat_messages (
           id,
@@ -231,7 +233,12 @@ export async function getChatRooms(): Promise<ChatRoomWithSource[]> {
       return [];
     }
 
-    return data.map((room: any) => {
+    const activeRooms = data.filter((room: any) => {
+      const ws = room.water_source;
+      return ws && ws.is_published && !ws.archived_at;
+    });
+
+    return activeRooms.map((room: any) => {
       const published = (room.chat_messages || []).filter(
         (m: any) => m.status === "published"
       );
