@@ -87,7 +87,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
           setPendingSubmissions((subs || []).filter((s) => s.status === "pending").length);
           setPendingReports((reps || []).filter((r) => r.status === "pending").length);
           setFlaggedMessages((flagged || []).length);
-        } catch {}
+        } catch { }
       }
     };
 
@@ -152,7 +152,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
     navLinks.forEach((link) => {
       try {
         router.prefetch(link.href);
-      } catch {}
+      } catch { }
     });
   }, [router]);
 
@@ -225,16 +225,16 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                 onMouseEnter={() => {
                   try {
                     router.prefetch(item.href);
-                  } catch {}
+                  } catch { }
                 }}
                 onTouchStart={() => {
                   try {
                     router.prefetch(item.href);
-                  } catch {}
+                  } catch { }
                 }}
                 onClick={() => {
                   setPendingHref(item.href);
-                  startTransition(() => {});
+                  startTransition(() => { });
                 }}
                 className={cn(
                   "flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 active:scale-[0.98] select-none cursor-pointer",
@@ -257,8 +257,8 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                           ? "bg-white text-blue-700 shadow-2xs font-extrabold"
                           : "bg-white/20 text-white"
                         : item.badge > 0
-                        ? item.badgeColor || "bg-blue-500 text-white"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/60"
+                          ? item.badgeColor || "bg-blue-500 text-white"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/60"
                     )}
                   >
                     {item.badge}
@@ -298,9 +298,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
               <span className="font-bold text-xs text-slate-900 dark:text-white block leading-tight truncate">
                 Admin Console
               </span>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 leading-tight">
-                ● Live Operations
-              </span>
+
             </div>
           </div>
 

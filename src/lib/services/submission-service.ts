@@ -69,8 +69,8 @@ export async function submitWaterSource(data: SubmissionFormData): Promise<{
   }
 
   try {
-    const supabase = createClient();
-    const { data: result, error } = await supabase
+    const admin = createAdminClient();
+    const { data: result, error } = await admin
       .from("water_submissions")
       .insert({
         visitor_id: data.visitor_id,
@@ -91,6 +91,7 @@ export async function submitWaterSource(data: SubmissionFormData): Promise<{
       .single();
 
     if (error) {
+      console.error("Failed to insert water submission into Supabase:", error);
       // Local demo fallback
       const mockId = `sub-${Date.now()}`;
       MOCK_SUBMISSIONS.unshift({
@@ -216,6 +217,22 @@ export async function approveSubmission(
       water_source_id: newSource.id,
       is_active: true,
     });
+
+    // Copy photos from submission_photos to water_photos
+    const { data: subPhotos } = await admin
+      .from("submission_photos")
+      .select("storage_path")
+      .eq("submission_id", submissionId);
+
+    if (subPhotos && subPhotos.length > 0) {
+      await admin.from("water_photos").insert(
+        subPhotos.map((p: any, idx: number) => ({
+          water_source_id: newSource.id,
+          storage_path: p.storage_path,
+          is_primary: idx === 0,
+        }))
+      );
+    }
 
     return { success: true, publishedSourceId: newSource.id };
   } catch (err: any) {

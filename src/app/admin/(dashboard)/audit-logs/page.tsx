@@ -16,7 +16,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { getAuditLogs } from "@/lib/services/audit-service";
+import { getAuditLogsAction } from "@/actions/audit-actions";
 import { AuditLogRow } from "@/types/admin";
 import { formatDate } from "@/lib/utils/date-utils";
 import { AdminHeader } from "@/components/admin/admin-header";
@@ -33,7 +33,7 @@ export default function AdminAuditLogsPage() {
 
   const loadLogs = useCallback(async () => {
     try {
-      const data = await getAuditLogs();
+      const data = await getAuditLogsAction();
       setLogs(data);
       setAdminCache(ADMIN_CACHE_KEYS.AUDIT_LOGS, data);
     } catch (err) {

@@ -13,9 +13,10 @@ import { useGeolocation } from "@/hooks/use-geolocation";
 interface LocationPickerMapProps {
   latitude: number;
   longitude: number;
-  onChange: (lat: number, lng: number) => void;
+  onChange?: (lat: number, lng: number) => void;
   className?: string;
   defaultLayer?: "standard" | "satellite";
+  readOnly?: boolean;
 }
 
 const TILE_LAYERS = {
@@ -39,6 +40,7 @@ export default function LocationPickerMap({
   onChange,
   className = "h-[340px]",
   defaultLayer = "satellite",
+  readOnly = false,
 }: LocationPickerMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -81,7 +83,7 @@ export default function LocationPickerMap({
 
     const map = L.map(container, {
       center: [initialLat, initialLng],
-      zoom: 14,
+      zoom: 15,
       minZoom: 11,
       maxZoom: 19,
       zoomControl: false,
@@ -97,29 +99,35 @@ export default function LocationPickerMap({
 
     tileLayerRef.current = tileLayer;
 
-    // Add draggable marker
+    // Add marker (draggable only if not readOnly)
     const marker = L.marker([initialLat, initialLng], {
       icon: createPickerMarkerIcon("Water Point Pin"),
-      draggable: true,
-      autoPan: true,
+      draggable: !readOnly,
+      autoPan: !readOnly,
     }).addTo(map);
 
-    marker.on("dragend", (e: any) => {
-      const pos = e.target.getLatLng();
-      const newLat = Number(pos.lat.toFixed(6));
-      const newLng = Number(pos.lng.toFixed(6));
-      onChangeRef.current(newLat, newLng);
-    });
+    if (!readOnly) {
+      marker.on("dragend", (e: any) => {
+        const pos = e.target.getLatLng();
+        const newLat = Number(pos.lat.toFixed(6));
+        const newLng = Number(pos.lng.toFixed(6));
+        if (onChangeRef.current) {
+          onChangeRef.current(newLat, newLng);
+        }
+      });
+
+      // Click anywhere on map to reposition pin
+      map.on("click", (e: L.LeafletMouseEvent) => {
+        const newLat = Number(e.latlng.lat.toFixed(6));
+        const newLng = Number(e.latlng.lng.toFixed(6));
+        marker.setLatLng([newLat, newLng]);
+        if (onChangeRef.current) {
+          onChangeRef.current(newLat, newLng);
+        }
+      });
+    }
 
     markerRef.current = marker;
-
-    // Click anywhere on map to reposition pin
-    map.on("click", (e: L.LeafletMouseEvent) => {
-      const newLat = Number(e.latlng.lat.toFixed(6));
-      const newLng = Number(e.latlng.lng.toFixed(6));
-      marker.setLatLng([newLat, newLng]);
-      onChangeRef.current(newLat, newLng);
-    });
 
     mapInstanceRef.current = map;
 
@@ -198,7 +206,7 @@ export default function LocationPickerMap({
     if (pos) {
       const newLat = Number(pos.lat.toFixed(6));
       const newLng = Number(pos.lng.toFixed(6));
-      onChange(newLat, newLng);
+      onChange?.(newLat, newLng);
 
       if (mapInstanceRef.current) {
         mapInstanceRef.current.flyTo([newLat, newLng], 16, { duration: 1.2 });
@@ -206,14 +214,17 @@ export default function LocationPickerMap({
     }
   };
 
-  // 5. Center on Irosin town center
+  // 5. Center on Irosin or Pinned location
   const handleResetCenter = () => {
-    const newLat = IROSIN_COORDINATES.lat;
-    const newLng = IROSIN_COORDINATES.lng;
-    onChange(newLat, newLng);
+    const targetLat = readOnly ? (Number.isFinite(latitude) ? latitude : IROSIN_COORDINATES.lat) : IROSIN_COORDINATES.lat;
+    const targetLng = readOnly ? (Number.isFinite(longitude) ? longitude : IROSIN_COORDINATES.lng) : IROSIN_COORDINATES.lng;
+
+    if (!readOnly && onChange) {
+      onChange(targetLat, targetLng);
+    }
 
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo([newLat, newLng], 14, { duration: 1 });
+      mapInstanceRef.current.flyTo([targetLat, targetLng], readOnly ? 16 : 14, { duration: 1 });
     }
   };
 
@@ -235,24 +246,26 @@ export default function LocationPickerMap({
           <span>{TILE_LAYERS[activeLayer].name}</span>
         </button>
 
-        {/* Locate me button */}
-        <button
-          type="button"
-          onClick={handleLocateMe}
-          disabled={isLocating}
-          className="h-9 px-3 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 shadow-md text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer disabled:opacity-60"
-          title="Use My Current GPS Location"
-        >
-          <Navigation className={`h-4 w-4 ${isLocating ? "animate-spin text-blue-500" : ""}`} />
-          <span>{isLocating ? "Locating..." : "My GPS"}</span>
-        </button>
+        {/* Locate me button (only in interactive mode) */}
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={handleLocateMe}
+            disabled={isLocating}
+            className="h-9 px-3 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 shadow-md text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer disabled:opacity-60"
+            title="Use My Current GPS Location"
+          >
+            <Navigation className={`h-4 w-4 ${isLocating ? "animate-spin text-blue-500" : ""}`} />
+            <span>{isLocating ? "Locating..." : "My GPS"}</span>
+          </button>
+        )}
 
-        {/* Center on Irosin button */}
+        {/* Center button */}
         <button
           type="button"
           onClick={handleResetCenter}
           className="h-9 w-9 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 shadow-md text-slate-600 dark:text-slate-300 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer ml-auto"
-          title="Reset View to Irosin Center"
+          title={readOnly ? "Recenter on Pinned Location" : "Reset View to Irosin Center"}
         >
           <Compass className="h-4 w-4" />
         </button>
@@ -262,7 +275,11 @@ export default function LocationPickerMap({
       <div className="absolute bottom-3 left-3 right-3 sm:left-auto sm:right-3 z-[400] pointer-events-none">
         <div className="bg-slate-950/80 backdrop-blur-md border border-white/20 text-white text-[11px] font-medium px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-2">
           <Crosshair className="h-3.5 w-3.5 text-cyan-400 shrink-0 animate-pulse" />
-          <span>Tap anywhere on the map or drag the pin to position the water source</span>
+          <span>
+            {readOnly
+              ? `Pinned coordinates: ${latitude.toFixed(5)}° N, ${longitude.toFixed(5)}° E`
+              : "Tap anywhere on the map or drag the pin to position the water source"}
+          </span>
         </div>
       </div>
     </div>

@@ -2,13 +2,18 @@
 "use client";
 
 import React, { useState } from "react";
+import { usePathname } from "next/navigation";
 import { AlertTriangle, X } from "lucide-react";
 import Link from "next/link";
 import { useSystemSettings } from "@/hooks/use-system-settings";
 
 export function AnnouncementBanner() {
+  const pathname = usePathname();
   const { settings } = useSystemSettings();
   const [dismissedText, setDismissedText] = useState<string | null>(null);
+
+  // Do not show on admin dashboard pages; this is strictly a citizen-facing broadcast
+  if (pathname.startsWith("/admin")) return null;
 
   const enabled = Boolean(settings.alertBannerEnabled);
   const advisoryText =
