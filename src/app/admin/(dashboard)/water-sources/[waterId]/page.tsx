@@ -16,6 +16,7 @@ import { AVAILABILITY_STATUS_LABELS, CATEGORY_LABELS } from "@/lib/utils/constan
 import { formatDate } from "@/lib/utils/date-utils";
 import { getDirectionsUrl } from "@/lib/map/map-utils";
 import { getPublicStorageUrl } from "@/lib/utils/image-utils";
+import { invalidateAdminCache, ADMIN_CACHE_KEYS } from "@/lib/cache/admin-cache";
 
 export default function AdminWaterSourceDetailPage() {
   const params = useParams();
@@ -42,15 +43,18 @@ export default function AdminWaterSourceDetailPage() {
   }, [waterId]);
 
   const handleArchive = async () => {
-    if (!confirm("Are you sure you want to archive this water source? It will no longer appear on the public map.")) {
+    if (!confirm("Are you sure you want to delete this water source? It will be permanently removed from the municipal directory and public map.")) {
       return;
     }
     setIsArchiving(true);
     try {
       await archiveWaterSourceAction(waterId);
+      invalidateAdminCache(ADMIN_CACHE_KEYS.WATER_SOURCES);
+      invalidateAdminCache(ADMIN_CACHE_KEYS.OVERVIEW_METRICS);
+      invalidateAdminCache(ADMIN_CACHE_KEYS.ANALYTICS);
       router.push("/admin/water-sources");
     } catch (err) {
-      alert("Failed to archive resource: " + (err as Error).message);
+      alert("Failed to delete resource: " + (err as Error).message);
     } finally {
       setIsArchiving(false);
     }

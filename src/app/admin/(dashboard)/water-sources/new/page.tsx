@@ -11,6 +11,7 @@ import {
 } from "@/actions/water-actions";
 import { uploadWaterImage, ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE } from "@/lib/supabase/storage";
 import { waterCategories, waterAvailabilityStatuses } from "@/lib/validations/water-schema";
+import { invalidateAdminCache, ADMIN_CACHE_KEYS } from "@/lib/cache/admin-cache";
 import { 
   IROSIN_BARANGAYS, 
   IROSIN_COORDINATES, 
@@ -79,6 +80,7 @@ export default function AdminNewWaterSourcePage() {
   // Photos State (1 - 6 images allowed)
   const [stagedPhotos, setStagedPhotos] = useState<StagedPhoto[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   const maxPhotosAllowed = 6;
   const totalPhotosCount = stagedPhotos.length;
@@ -197,8 +199,22 @@ export default function AdminNewWaterSourcePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSaving(true);
     setErrorMsg(null);
+
+    // Client pre-validation with smooth focus
+    if (!name.trim()) {
+      setErrorMsg("Resource Name is required. Please provide a title for this water source.");
+      nameInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      nameInputRef.current?.focus();
+      return;
+    }
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      setErrorMsg("Valid geographic coordinates are required. Please pinpoint a location on the map.");
+      return;
+    }
+
+    setIsSaving(true);
     setUploadProgress(5);
     setUploadStatusText("Validating water source information...");
 
@@ -274,7 +290,13 @@ export default function AdminNewWaterSourcePage() {
 
       setUploadProgress(100);
       setUploadStatusText("Complete! Redirecting...");
-      router.push("/admin/water-sources");
+      
+      // Clear cache so the directory table reflects the new item immediately
+      invalidateAdminCache(ADMIN_CACHE_KEYS.WATER_SOURCES);
+      invalidateAdminCache(ADMIN_CACHE_KEYS.OVERVIEW_METRICS);
+      invalidateAdminCache(ADMIN_CACHE_KEYS.ANALYTICS);
+
+      window.location.href = "/admin/water-sources";
     } catch (err: any) {
       setErrorMsg(err.message || "An unexpected error occurred while creating water source");
       setIsSaving(false);
@@ -337,11 +359,11 @@ export default function AdminNewWaterSourcePage() {
                 Resource Name <span className="text-rose-500">*</span>
               </label>
               <Input
+                ref={nameInputRef}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. San Mateo Cold Springs"
                 className="h-10 rounded-xl"
-                required
               />
             </div>
 
@@ -633,6 +655,17 @@ export default function AdminNewWaterSourcePage() {
             </label>
           </div>
         </Card>
+
+        {/* Bottom Error Notification */}
+        {errorMsg && (
+          <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-start gap-2.5 shadow-2xs">
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+            <div className="flex-1 font-medium">{errorMsg}</div>
+            <button type="button" onClick={() => setErrorMsg(null)} className="text-destructive/70 hover:text-destructive">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-3 pt-2">

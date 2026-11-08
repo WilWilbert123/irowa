@@ -394,13 +394,14 @@ export async function getWaterSourceById(id: string): Promise<WaterSourceWithPho
 
 export async function getAllWaterSourcesAdmin(): Promise<WaterSourceWithPhotos[]> {
   if (!isSupabaseConfigured()) {
-    return MOCK_IROSIN_WATER_SOURCES;
+    return MOCK_IROSIN_WATER_SOURCES.filter((s) => !s.archived_at);
   }
   try {
     const admin = createAdminClient();
     const { data, error } = await admin
       .from("water_sources")
       .select("*, photos:water_photos(*)")
+      .is("archived_at", null)
       .order("created_at", { ascending: false });
 
     if (error) {

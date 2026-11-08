@@ -4,8 +4,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 
-export const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
-export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export interface StorageUploadActionResult {
   success: boolean;

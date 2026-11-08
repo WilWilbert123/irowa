@@ -4,7 +4,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { AdminHeader } from "@/components/admin/admin-header";
-import { getAllWaterSourcesAction, archiveWaterSourceAction } from "@/actions/water-actions";
+import { getAllWaterSourcesAction, deleteWaterSourceAction, archiveWaterSourceAction } from "@/actions/water-actions";
 import { AVAILABILITY_BADGES, CATEGORY_COLORS } from "@/lib/utils/constants";
 import { formatDate } from "@/lib/utils/date-utils";
 import {
@@ -56,24 +56,31 @@ export default function AdminWaterSourcesPage() {
     loadSources();
   }, [loadSources]);
 
-  const handleArchive = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to archive "${name}" from the active public map?`)) {
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete "${name}"? This will permanently remove it from the municipal directory and map.`)) {
       return;
     }
+
+    // Instant Optimistic UI Removal (0ms realtime feedback)
+    const previousSources = [...sources];
+    const updated = sources.filter((s) => s.id !== id);
+    setSources(updated);
+    setAdminCache(ADMIN_CACHE_KEYS.WATER_SOURCES, updated);
     setArchivingId(id);
+
     try {
-      const res = await archiveWaterSourceAction(id);
-      if (res.success) {
-        setSources((prev) => {
-          const updated = prev.filter((s) => s.id !== id);
-          setAdminCache(ADMIN_CACHE_KEYS.WATER_SOURCES, updated);
-          return updated;
-        });
-      } else {
-        alert(res.error || "Failed to archive water source");
+      const res = await deleteWaterSourceAction(id);
+      if (!res.success) {
+        // Rollback if server reported error
+        setSources(previousSources);
+        setAdminCache(ADMIN_CACHE_KEYS.WATER_SOURCES, previousSources);
+        alert(res.error || "Failed to delete water source");
       }
     } catch (err: any) {
-      alert(err.message || "Failed to archive water source");
+      // Rollback on network failure
+      setSources(previousSources);
+      setAdminCache(ADMIN_CACHE_KEYS.WATER_SOURCES, previousSources);
+      alert(err.message || "Failed to delete water source");
     } finally {
       setArchivingId(null);
     }
@@ -315,10 +322,10 @@ export default function AdminWaterSourcesPage() {
                           </Link>
                           <button
                             type="button"
-                            onClick={() => handleArchive(source.id, source.name)}
+                            onClick={() => handleDelete(source.id, source.name)}
                             disabled={archivingId === source.id}
                             className="inline-flex p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50"
-                            title="Archive / Remove from Public Map"
+                            title="Delete Water Resource"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -427,13 +434,13 @@ export default function AdminWaterSourcesPage() {
                       </Link>
                       <button
                         type="button"
-                        onClick={() => handleArchive(source.id, source.name)}
+                        onClick={() => handleDelete(source.id, source.name)}
                         disabled={archivingId === source.id}
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
-                        title="Archive Resource"
+                        title="Delete Resource"
                       >
                         <Trash2 className="h-3 w-3" />
-                        <span>Archive</span>
+                        <span>Delete</span>
                       </button>
                     </div>
                   </div>

@@ -6,10 +6,14 @@ import L from "leaflet";
 import { WaterSourceWithPhotos } from "@/types/water";
 import { WaterCategory } from "@/types/database.types";
 import { MAP_CONFIG } from "@/lib/map/map-config";
-import { createCategoryDivIcon, createLocationMarkerIcon, createStartLocationIcon } from "@/lib/map/map-icons";
+import { 
+  createCategoryDivIcon, 
+  createLocationMarkerIcon, 
+  createStartLocationIcon 
+} from "@/lib/map/map-icons";
 import { InAppRoute, fetchInAppRoute } from "@/lib/map/map-utils";
 import { MapCategoryFilter } from "./map-category-filter";
-import { MapSearchBar } from "./map-search-bar";
+import { MapSearchBar, IROSIN_BARANGAYS_DATA } from "./map-search-bar";
 import { MapControls } from "./map-controls";
 import { MarkerPopupCard } from "./marker-popup-card";
 import { DirectionsPanel } from "./directions-panel";
@@ -37,9 +41,10 @@ const TILE_LAYERS = {
     maxNativeZoom: 18,
   },
   satellite: {
-    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    attribution: "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
-    maxNativeZoom: 17,
+    url: "https://mt{s}.google.com/vt/lyrs=y&apistyle=s.e:l.i|p.v:off,s.t:33|p.v:off&x={x}&y={y}&z={z}",
+    attribution: "&copy; Google Maps",
+    subdomains: "0123",
+    maxNativeZoom: 20,
   },
   terrain: {
     url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
@@ -222,7 +227,7 @@ export function MapView({
     tileLayerRef.current = tileLayer;
   }, [currentLayer]);
 
-  // 3. Render and sync water source markers
+  // 3. Render and sync water source markers (pins have NO text)
   useEffect(() => {
     const map = mapInstanceRef.current;
     const group = markersGroupRef.current;
@@ -232,8 +237,17 @@ export function MapView({
 
     visibleSources.forEach((source) => {
       const isSelected = selectedSource?.id === source.id;
+      // Pins have no text badge - clean category icon only
       const icon = createCategoryDivIcon(source.category, isSelected, source.availability_status);
       const marker = L.marker([source.latitude, source.longitude], { icon });
+
+      marker.bindTooltip(
+        source.barangay ? `${source.name} (${source.barangay})` : source.name,
+        {
+          direction: "top",
+          offset: [0, -24],
+        }
+      );
 
       marker.on("click", () => {
         onSelectSource(source);

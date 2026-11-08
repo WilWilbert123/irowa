@@ -7,6 +7,7 @@ import { waterSourceSchema } from "@/lib/validations/water-schema";
 import { slugify } from "@/lib/utils/formatters";
 import { logAdminAction } from "@/lib/services/audit-service";
 import { getWaterSourceById, getPublishedWaterSources, getAllWaterSourcesAdmin, MOCK_IROSIN_WATER_SOURCES } from "@/lib/services/water-service";
+import { sendPushNotificationToSubscribers, MOCK_NOTIFICATIONS } from "@/lib/services/notification-service";
 import { revalidatePath } from "next/cache";
 
 export async function getAllWaterSourcesAction() {
@@ -24,7 +25,7 @@ export async function getPublishedWaterSourcesAction(filters?: any) {
 export async function createWaterSourceAction(formData: any) {
   const validated = waterSourceSchema.safeParse(formData);
   if (!validated.success) {
-    return { error: (validated.error as any).issues?.[0]?.message || "Validation failed" };
+    return { success: false, error: (validated.error as any).issues?.[0]?.message || "Validation failed" };
   }
 
   const data = validated.data;
@@ -83,7 +84,7 @@ export async function createWaterSourceAction(formData: any) {
       .single();
 
     if (error) {
-      return { error: error.message };
+      return { success: false, error: error.message };
     }
 
     // Auto-create chat room for this water source
@@ -92,21 +93,44 @@ export async function createWaterSourceAction(formData: any) {
       is_active: true,
     });
 
+    // Broadcast notification to all citizens
+    if (data.is_published) {
+      const locText = data.barangay
+        ? `in ${data.barangay.startsWith("Brgy.") ? data.barangay : `Brgy. ${data.barangay}`}`
+        : "in Irosin";
+
+      await admin.from("notifications").insert({
+        type: "new_water_source",
+        title: "New Water Source Verified",
+        body: `${data.name} ${locText} has been officially verified and added to the IroWa interactive map.`,
+        water_source_id: newSource.id,
+        is_read: false,
+      });
+
+      // Dispatch web push to subscribed devices
+      sendPushNotificationToSubscribers({
+        title: "New Water Source Verified",
+        body: `${data.name} ${locText} has been added to the IroWa map.`,
+        url: `/water/${newSource.id}`,
+      }).catch(() => {});
+    }
+
     await logAdminAction("CREATE_WATER_SOURCE", "water_source", newSource.id, { name: data.name });
 
     revalidatePath("/admin/water-sources");
+    revalidatePath("/notifications");
     revalidatePath("/home");
     revalidatePath("/map");
     return { success: true, id: newSource.id };
   } catch (err: any) {
-    return { error: err.message || "Failed to create water source" };
+    return { success: false, error: err.message || "Failed to create water source" };
   }
 }
 
 export async function updateWaterSourceAction(id: string, formData: any) {
   const validated = waterSourceSchema.partial().safeParse(formData);
   if (!validated.success) {
-    return { error: (validated.error as any).issues?.[0]?.message || "Validation failed" };
+    return { success: false, error: (validated.error as any).issues?.[0]?.message || "Validation failed" };
   }
 
   try {
@@ -119,7 +143,7 @@ export async function updateWaterSourceAction(id: string, formData: any) {
       })
       .eq("id", id);
 
-    if (error) return { error: error.message };
+    if (error) return { success: false, error: error.message };
 
     await logAdminAction("UPDATE_WATER_SOURCE", "water_source", id, validated.data);
 
@@ -129,31 +153,64 @@ export async function updateWaterSourceAction(id: string, formData: any) {
     revalidatePath("/map");
     return { success: true };
   } catch (err: any) {
-    return { error: err.message || "Failed to update water source" };
+    return { success: false, error: err.message || "Failed to update water source" };
+  }
+}
+
+export async function deleteWaterSourceAction(id: string) {
+  try {
+    const admin = createAdminClient();
+
+    // 1. Parallelize dependent deletions for maximum speed
+    await Promise.allSettled([
+      admin.from("water_photos").delete().eq("water_source_id", id),
+      admin.from("water_reports").delete().eq("water_source_id", id),
+      admin.from("saved_locations").delete().eq("water_source_id", id),
+      admin.from("chat_messages").delete().eq("water_source_id", id),
+      admin.from("chat_rooms").delete().eq("water_source_id", id),
+    ]);
+
+    // 2. Hard-delete from water_sources
+    const { error: deleteErr } = await admin.from("water_sources").delete().eq("id", id);
+
+    if (deleteErr) {
+      console.warn("Hard delete failed, falling back to soft-delete archive:", deleteErr.message);
+      const { error: archiveErr } = await admin
+        .from("water_sources")
+        .update({
+          archived_at: new Date().toISOString(),
+          is_published: false,
+        })
+        .eq("id", id);
+
+      if (archiveErr) return { error: archiveErr.message };
+    }
+
+    // 3. Update in-memory mock if in fallback mode
+    const idx = MOCK_IROSIN_WATER_SOURCES.findIndex((s) => s.id === id);
+    if (idx !== -1) {
+      MOCK_IROSIN_WATER_SOURCES.splice(idx, 1);
+    }
+
+    // 4. Background logging & path revalidation
+    logAdminAction("DELETE_WATER_SOURCE", "water_source", id).catch(() => {});
+    try {
+      revalidatePath("/admin/water-sources");
+      revalidatePath("/admin");
+      revalidatePath("/home");
+      revalidatePath("/map");
+    } catch {
+      // non-blocking
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { error: err.message || "Failed to delete water source" };
   }
 }
 
 export async function archiveWaterSourceAction(id: string) {
-  try {
-    const admin = createAdminClient();
-    const { error } = await admin
-      .from("water_sources")
-      .update({
-        archived_at: new Date().toISOString(),
-        is_published: false,
-      })
-      .eq("id", id);
-
-    if (error) return { error: error.message };
-
-    await logAdminAction("ARCHIVE_WATER_SOURCE", "water_source", id);
-
-    revalidatePath("/admin/water-sources");
-    revalidatePath("/home");
-    return { success: true };
-  } catch (err: any) {
-    return { error: err.message || "Failed to archive water source" };
-  }
+  return await deleteWaterSourceAction(id);
 }
 
 export async function syncWaterSourcePhotosAction(
