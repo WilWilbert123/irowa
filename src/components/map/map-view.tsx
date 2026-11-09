@@ -41,9 +41,9 @@ const TILE_LAYERS = {
     maxNativeZoom: 18,
   },
   satellite: {
-    url: "https://mt{s}.google.com/vt/lyrs=y&apistyle=s.e:l.i|p.v:off,s.t:33|p.v:off&x={x}&y={y}&z={z}",
+    url: "https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
     attribution: "&copy; Google Maps",
-    subdomains: "0123",
+    subdomains: ["0", "1", "2", "3"],
     maxNativeZoom: 20,
   },
   terrain: {
@@ -152,6 +152,8 @@ export function MapView({
       maxNativeZoom: config.maxNativeZoom,
       maxZoom: 19,
       subdomains: "subdomains" in config ? (config as any).subdomains : "abc",
+      keepBuffer: 6,
+      updateWhenIdle: true,
     }).addTo(map);
 
     tileLayerRef.current = tileLayer;
@@ -222,6 +224,8 @@ export function MapView({
       maxNativeZoom: config.maxNativeZoom,
       maxZoom: 19,
       subdomains: "subdomains" in config ? (config as any).subdomains : "abc",
+      keepBuffer: 6,
+      updateWhenIdle: true,
     }).addTo(map);
 
     tileLayerRef.current = tileLayer;

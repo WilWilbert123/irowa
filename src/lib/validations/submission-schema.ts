@@ -26,6 +26,8 @@ export const submissionSchema = z.object({
   operating_hours: z.string().max(100).optional().nullable(),
   contact_information: z.string().max(200).optional().nullable(),
   notes: z.string().max(1000).optional().nullable(),
+  custom_icon_id: z.string().optional().nullable(),
+  custom_icon_color: z.string().optional().nullable(),
 });
 
 export type SubmissionFormData = z.infer<typeof submissionSchema>;

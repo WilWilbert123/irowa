@@ -6,6 +6,71 @@ import { SubmissionFormData } from "../validations/submission-schema";
 import { checkRateLimit } from "../utils/rate-limit";
 import { slugify } from "../utils/formatters";
 import { sendPushNotificationToSubscribers } from "./notification-service";
+import { saveWaterSourceCustomIcon } from "./water-service";
+
+let submissionIconsCache: Record<string, { iconId: string; color?: string }> | null = null;
+
+export async function getSubmissionCustomIcons(): Promise<Record<string, { iconId: string; color?: string }>> {
+  if (submissionIconsCache) return submissionIconsCache;
+  if (!isSupabaseConfigured()) return submissionIconsCache || {};
+
+  try {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("application_settings")
+      .select("value")
+      .eq("key", "submission_custom_icons")
+      .maybeSingle();
+
+    if (data?.value && typeof data.value === "object") {
+      submissionIconsCache = data.value as Record<string, { iconId: string; color?: string }>;
+      return submissionIconsCache;
+    }
+  } catch {
+    // fallback
+  }
+  return submissionIconsCache || {};
+}
+
+export async function saveSubmissionCustomIcon(
+  submissionId: string,
+  iconId: string,
+  color?: string
+): Promise<boolean> {
+  if (!submissionId || !iconId) return false;
+  if (!submissionIconsCache) submissionIconsCache = {};
+  submissionIconsCache[submissionId] = { iconId, color };
+
+  if (!isSupabaseConfigured()) return true;
+
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("application_settings")
+      .select("value")
+      .eq("key", "submission_custom_icons")
+      .maybeSingle();
+
+    const currentMap =
+      data?.value && typeof data.value === "object"
+        ? (data.value as Record<string, any>)
+        : {};
+    currentMap[submissionId] = { iconId, color };
+
+    await admin.from("application_settings").upsert(
+      {
+        key: "submission_custom_icons",
+        value: currentMap,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" }
+    );
+    return true;
+  } catch (err) {
+    console.error("Failed to save submission custom icon:", err);
+    return false;
+  }
+}
 
 export const MOCK_SUBMISSIONS: WaterSubmissionWithPhotos[] = [
   {
@@ -117,7 +182,14 @@ export async function submitWaterSource(data: SubmissionFormData): Promise<{
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
+      if (data.custom_icon_id) {
+        await saveSubmissionCustomIcon(mockId, data.custom_icon_id, data.custom_icon_color || undefined);
+      }
       return { success: true, submissionId: mockId };
+    }
+
+    if (data.custom_icon_id) {
+      await saveSubmissionCustomIcon(result.id, data.custom_icon_id, data.custom_icon_color || undefined);
     }
 
     return { success: true, submissionId: result.id };
@@ -219,6 +291,17 @@ export async function approveSubmission(
       is_active: true,
     });
 
+    // Transfer citizen-suggested custom icon & color to the newly published water source
+    try {
+      const submissionIcons = await getSubmissionCustomIcons();
+      const subIcon = submissionIcons[submissionId];
+      if (subIcon) {
+        await saveWaterSourceCustomIcon(newSource.id, subIcon.iconId, subIcon.color);
+      }
+    } catch {
+      // Non-blocking fallback
+    }
+
     // Copy photos from submission_photos to water_photos
     const { data: subPhotos } = await admin
       .from("submission_photos")
@@ -288,8 +371,12 @@ export async function rejectSubmission(
 }
 
 export async function getSubmissionById(id: string): Promise<WaterSubmissionWithPhotos | null> {
+  const icons = await getSubmissionCustomIcons();
+
   if (!isSupabaseConfigured()) {
-    return MOCK_SUBMISSIONS.find((s) => s.id === id) || null;
+    const found = MOCK_SUBMISSIONS.find((s) => s.id === id);
+    if (!found) return null;
+    return { ...found, custom_icon: icons[found.id] };
   }
   try {
     const admin = createAdminClient();
@@ -300,10 +387,15 @@ export async function getSubmissionById(id: string): Promise<WaterSubmissionWith
       .single();
 
     if (error || !data) {
-      return MOCK_SUBMISSIONS.find((s) => s.id === id) || null;
+      const found = MOCK_SUBMISSIONS.find((s) => s.id === id);
+      if (!found) return null;
+      return { ...found, custom_icon: icons[found.id] };
     }
-    return data as WaterSubmissionWithPhotos;
+    const sub = data as WaterSubmissionWithPhotos;
+    return { ...sub, custom_icon: icons[sub.id] };
   } catch {
-    return MOCK_SUBMISSIONS.find((s) => s.id === id) || null;
+    const found = MOCK_SUBMISSIONS.find((s) => s.id === id);
+    if (!found) return null;
+    return { ...found, custom_icon: icons[found.id] };
   }
 }
