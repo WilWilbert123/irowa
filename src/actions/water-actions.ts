@@ -6,7 +6,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { waterSourceSchema } from "@/lib/validations/water-schema";
 import { slugify } from "@/lib/utils/formatters";
 import { logAdminAction } from "@/lib/services/audit-service";
-import { getWaterSourceById, getPublishedWaterSources, getAllWaterSourcesAdmin, MOCK_IROSIN_WATER_SOURCES } from "@/lib/services/water-service";
+import { getWaterSourceById, getPublishedWaterSources, getAllWaterSourcesAdmin, MOCK_IROSIN_WATER_SOURCES, saveWaterSourceCustomIcon, getWaterSourceCustomIcons } from "@/lib/services/water-service";
 import { sendPushNotificationToSubscribers, MOCK_NOTIFICATIONS } from "@/lib/services/notification-service";
 import { revalidatePath } from "next/cache";
 
@@ -22,17 +22,101 @@ export async function getPublishedWaterSourcesAction(filters?: any) {
   return await getPublishedWaterSources(filters);
 }
 
+export async function saveWaterSourceCustomIconAction(waterSourceId: string, iconId: string, color?: string) {
+  return await saveWaterSourceCustomIcon(waterSourceId, iconId, color);
+}
+
+export async function getWaterSourceCustomIconsAction() {
+  return await getWaterSourceCustomIcons();
+}
+
+const CATEGORY_NORMALIZER: Record<string, string> = {
+  public_water_source: "Public Water Source",
+  "public water source": "Public Water Source",
+  spring: "Spring",
+  river: "River",
+  waterfall: "Waterfall",
+  resort: "Resort",
+  water_refilling_station: "Water Refilling Station",
+  "water refilling station": "Water Refilling Station",
+  deep_well: "Deep Well",
+  "deep well": "Deep Well",
+  community_water_point: "Community Water Point",
+  "community water point": "Community Water Point",
+  other: "Other",
+  "Public Water Source": "Public Water Source",
+  Spring: "Spring",
+  River: "River",
+  Waterfall: "Waterfall",
+  Resort: "Resort",
+  "Water Refilling Station": "Water Refilling Station",
+  "Deep Well": "Deep Well",
+  "Community Water Point": "Community Water Point",
+  Other: "Other",
+};
+
+const AVAILABILITY_NORMALIZER: Record<string, string> = {
+  available: "Available",
+  limited_supply: "Limited Supply",
+  "limited supply": "Limited Supply",
+  temporarily_unavailable: "Temporarily Unavailable",
+  "temporarily unavailable": "Temporarily Unavailable",
+  seasonal: "Seasonal",
+  unknown: "Unknown",
+  Available: "Available",
+  "Limited Supply": "Limited Supply",
+  "Temporarily Unavailable": "Temporarily Unavailable",
+  Seasonal: "Seasonal",
+  Unknown: "Unknown",
+};
+
+const VERIFICATION_NORMALIZER: Record<string, string> = {
+  verified: "Verified",
+  unverified: "Unverified",
+  stale: "Unverified",
+  Verified: "Verified",
+  Unverified: "Unverified",
+};
+
+function normalizeWaterSourceData(input: any) {
+  if (!input || typeof input !== "object") return input;
+  const result = { ...input };
+  if (result.category) {
+    result.category = CATEGORY_NORMALIZER[result.category] || CATEGORY_NORMALIZER[String(result.category).toLowerCase()] || result.category;
+  }
+  if (result.availability_status) {
+    result.availability_status = AVAILABILITY_NORMALIZER[result.availability_status] || AVAILABILITY_NORMALIZER[String(result.availability_status).toLowerCase()] || result.availability_status;
+  }
+  if (result.verification_status) {
+    result.verification_status = VERIFICATION_NORMALIZER[result.verification_status] || VERIFICATION_NORMALIZER[String(result.verification_status).toLowerCase()] || result.verification_status;
+  }
+  return result;
+}
+
 export async function createWaterSourceAction(formData: any) {
-  const validated = waterSourceSchema.safeParse(formData);
+  const normalizedData = normalizeWaterSourceData(formData);
+  const validated = waterSourceSchema.safeParse(normalizedData);
   if (!validated.success) {
     return { success: false, error: (validated.error as any).issues?.[0]?.message || "Validation failed" };
   }
 
   const data = validated.data;
-  const slug = `${slugify(data.name)}-${Date.now().toString().slice(-4)}`;
+  const slug = `${slugify(data.name)}-${crypto.randomUUID().slice(0, 8)}`;
 
   if (!isSupabaseConfigured()) {
     const newId = `ws_${Date.now()}`;
+    const photos = Array.isArray(formData.photos)
+      ? formData.photos.map((p: any, i: number) => ({
+          id: `p_${Date.now()}_${i}`,
+          water_source_id: newId,
+          storage_path: p.storage_path,
+          caption: p.caption || null,
+          is_primary: p.is_primary ?? (i === 0),
+          uploaded_by: null,
+          created_at: new Date().toISOString(),
+        }))
+      : [];
+
     MOCK_IROSIN_WATER_SOURCES.unshift({
       id: newId,
       name: data.name,
@@ -56,7 +140,7 @@ export async function createWaterSourceAction(formData: any) {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       archived_at: null,
-      photos: [],
+      photos,
     });
     return { success: true, id: newId };
   }
@@ -87,40 +171,75 @@ export async function createWaterSourceAction(formData: any) {
       return { success: false, error: error.message };
     }
 
+    // Direct atomic attachment of gallery photos if included
+    if (Array.isArray(formData.photos) && formData.photos.length > 0) {
+      try {
+        const photosToInsert = formData.photos.map((p: any, idx: number) => ({
+          water_source_id: newSource.id,
+          storage_path: p.storage_path,
+          caption: p.caption || null,
+          is_primary: p.is_primary ?? (idx === 0),
+        }));
+        await admin.from("water_photos").insert(photosToInsert);
+      } catch (photoErr) {
+        console.warn("Non-fatal photo link warning:", photoErr);
+      }
+    }
+
     // Auto-create chat room for this water source
-    await admin.from("chat_rooms").insert({
-      water_source_id: newSource.id,
-      is_active: true,
-    });
+    try {
+      await admin.from("chat_rooms").insert({
+        water_source_id: newSource.id,
+        is_active: true,
+      });
+    } catch {
+      // Safe non-blocking fallback
+    }
 
     // Broadcast notification to all citizens
     if (data.is_published) {
-      const locText = data.barangay
-        ? `in ${data.barangay.startsWith("Brgy.") ? data.barangay : `Brgy. ${data.barangay}`}`
-        : "in Irosin";
+      try {
+        const locText = data.barangay
+          ? `in ${data.barangay.startsWith("Brgy.") ? data.barangay : `Brgy. ${data.barangay}`}`
+          : "in Irosin";
 
-      await admin.from("notifications").insert({
-        type: "new_water_source",
-        title: "New Water Source Verified",
-        body: `${data.name} ${locText} has been officially verified and added to the IroWa interactive map.`,
-        water_source_id: newSource.id,
-        is_read: false,
-      });
+        await admin.from("notifications").insert({
+          type: "new_water_source",
+          title: "New Water Source Verified",
+          body: `${data.name} ${locText} has been officially verified and added to the IroWa interactive map.`,
+          water_source_id: newSource.id,
+          is_read: false,
+        });
 
-      // Dispatch web push to subscribed devices
-      sendPushNotificationToSubscribers({
-        title: "New Water Source Verified",
-        body: `${data.name} ${locText} has been added to the IroWa map.`,
-        url: `/water/${newSource.id}`,
-      }).catch(() => {});
+        // Dispatch web push to subscribed devices
+        sendPushNotificationToSubscribers({
+          title: "New Water Source Verified",
+          body: `${data.name} ${locText} has been added to the IroWa map.`,
+          url: `/water/${newSource.id}`,
+        }).catch(() => {});
+      } catch {
+        // Safe non-blocking fallback
+      }
     }
 
-    await logAdminAction("CREATE_WATER_SOURCE", "water_source", newSource.id, { name: data.name });
+    if (formData?.custom_icon_id && newSource.id) {
+      await saveWaterSourceCustomIcon(newSource.id, formData.custom_icon_id, formData.custom_icon_color);
+    }
 
-    revalidatePath("/admin/water-sources");
-    revalidatePath("/notifications");
-    revalidatePath("/home");
-    revalidatePath("/map");
+    logAdminAction("CREATE_WATER_SOURCE", "water_source", newSource.id, { name: data.name }).catch(() => {});
+
+    try {
+      revalidatePath("/admin/water-sources");
+      revalidatePath("/admin/water-sources/new");
+      revalidatePath("/admin");
+      revalidatePath("/water");
+      revalidatePath("/notifications");
+      revalidatePath("/home");
+      revalidatePath("/map");
+    } catch {
+      // non-blocking
+    }
+
     return { success: true, id: newSource.id };
   } catch (err: any) {
     return { success: false, error: err.message || "Failed to create water source" };
@@ -128,29 +247,60 @@ export async function createWaterSourceAction(formData: any) {
 }
 
 export async function updateWaterSourceAction(id: string, formData: any) {
-  const validated = waterSourceSchema.partial().safeParse(formData);
+  const normalizedData = normalizeWaterSourceData(formData);
+  const validated = waterSourceSchema.partial().safeParse(normalizedData);
   if (!validated.success) {
     return { success: false, error: (validated.error as any).issues?.[0]?.message || "Validation failed" };
+  }
+
+  const updatePayload: Record<string, any> = {
+    ...validated.data,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (validated.data.name) {
+    updatePayload.slug = `${slugify(validated.data.name)}-${crypto.randomUUID().slice(0, 8)}`;
+  }
+
+  if (!isSupabaseConfigured()) {
+    const idx = MOCK_IROSIN_WATER_SOURCES.findIndex((s) => s.id === id);
+    if (idx !== -1) {
+      MOCK_IROSIN_WATER_SOURCES[idx] = {
+        ...MOCK_IROSIN_WATER_SOURCES[idx],
+        ...updatePayload,
+      };
+    }
+    return { success: true };
   }
 
   try {
     const admin = createAdminClient();
     const { error } = await admin
       .from("water_sources")
-      .update({
-        ...validated.data,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq("id", id);
 
     if (error) return { success: false, error: error.message };
 
-    await logAdminAction("UPDATE_WATER_SOURCE", "water_source", id, validated.data);
+    if (formData?.custom_icon_id) {
+      await saveWaterSourceCustomIcon(id, formData.custom_icon_id, formData.custom_icon_color);
+    }
 
-    revalidatePath("/admin/water-sources");
-    revalidatePath(`/admin/water-sources/${id}`);
-    revalidatePath("/home");
-    revalidatePath("/map");
+    logAdminAction("UPDATE_WATER_SOURCE", "water_source", id, validated.data).catch(() => {});
+
+    try {
+      revalidatePath("/admin/water-sources");
+      revalidatePath(`/admin/water-sources/${id}`);
+      revalidatePath(`/admin/water-sources/${id}/edit`);
+      revalidatePath("/admin");
+      revalidatePath(`/water/${id}`);
+      revalidatePath("/water");
+      revalidatePath("/home");
+      revalidatePath("/map");
+    } catch {
+      // non-blocking
+    }
+
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message || "Failed to update water source" };

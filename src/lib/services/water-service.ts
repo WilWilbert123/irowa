@@ -4,6 +4,109 @@ import { createAdminClient } from "../supabase/admin";
 import { WaterSourceWithPhotos, WaterFilterState } from "@/types/water";
 import { Database, WaterCategory, WaterAvailabilityStatus } from "@/types/database.types";
 import { slugify } from "../utils/formatters";
+import { getDefaultCircleIconForCategory } from "../map/circle-icons";
+
+// In-memory cache for custom icons to keep map rendering ultra fast
+let customIconsCache: Record<string, { iconId: string; color?: string }> | null = null;
+let lastIconsCacheTime = 0;
+
+export async function getWaterSourceCustomIcons(): Promise<Record<string, { iconId: string; color?: string }>> {
+  const now = Date.now();
+  if (customIconsCache && now - lastIconsCacheTime < 10000) {
+    return customIconsCache;
+  }
+
+  if (!isSupabaseConfigured()) {
+    return customIconsCache || {};
+  }
+
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("application_settings")
+      .select("value")
+      .eq("key", "water_source_custom_icons")
+      .maybeSingle();
+
+    if (!error && data?.value && typeof data.value === "object") {
+      customIconsCache = data.value as Record<string, { iconId: string; color?: string }>;
+      lastIconsCacheTime = now;
+      return customIconsCache;
+    }
+  } catch (err) {
+    console.error("Failed to load custom icons:", err);
+  }
+
+  return customIconsCache || {};
+}
+
+export async function saveWaterSourceCustomIcon(
+  waterSourceId: string,
+  iconId: string,
+  color?: string
+): Promise<boolean> {
+  if (!waterSourceId || !iconId) return false;
+
+  if (!customIconsCache) customIconsCache = {};
+  customIconsCache[waterSourceId] = { iconId, color };
+  lastIconsCacheTime = Date.now();
+
+  if (!isSupabaseConfigured()) {
+    return true;
+  }
+
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("application_settings")
+      .select("value")
+      .eq("key", "water_source_custom_icons")
+      .maybeSingle();
+
+    const currentMap =
+      data?.value && typeof data.value === "object"
+        ? (data.value as Record<string, any>)
+        : {};
+    currentMap[waterSourceId] = { iconId, color };
+
+    const { error } = await admin.from("application_settings").upsert(
+      {
+        key: "water_source_custom_icons",
+        value: currentMap,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" }
+    );
+
+    if (error) {
+      console.error("Failed to save custom icon:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Error saving custom icon:", err);
+    return false;
+  }
+}
+
+export function attachCustomIconsToSources(
+  sources: WaterSourceWithPhotos[],
+  iconsMap: Record<string, { iconId: string; color?: string }>
+): WaterSourceWithPhotos[] {
+  return sources.map((source) => {
+    const custom = iconsMap[source.id];
+    if (custom) {
+      return {
+        ...source,
+        custom_icon: custom,
+      };
+    }
+    return {
+      ...source,
+      custom_icon: getDefaultCircleIconForCategory(source.category, source.name),
+    };
+  });
+}
 
 // Default curated Irosin data used when database is in demo/fallback mode
 export const MOCK_IROSIN_WATER_SOURCES: WaterSourceWithPhotos[] = [
@@ -290,8 +393,11 @@ export const MOCK_IROSIN_WATER_SOURCES: WaterSourceWithPhotos[] = [
 ];
 
 export async function getPublishedWaterSources(filters?: Partial<WaterFilterState>): Promise<WaterSourceWithPhotos[]> {
+  const iconsMap = await getWaterSourceCustomIcons();
+
   if (!isSupabaseConfigured()) {
-    return filterMockSources(MOCK_IROSIN_WATER_SOURCES, filters);
+    const mockFiltered = filterMockSources(MOCK_IROSIN_WATER_SOURCES, filters);
+    return attachCustomIconsToSources(mockFiltered, iconsMap);
   }
 
   try {
@@ -320,7 +426,7 @@ export async function getPublishedWaterSources(filters?: Partial<WaterFilterStat
       console.error("Supabase query error:", error);
       return [];
     }
-    return (data || []) as WaterSourceWithPhotos[];
+    return attachCustomIconsToSources((data || []) as WaterSourceWithPhotos[], iconsMap);
   } catch (err) {
     console.error("Failed to fetch water sources from Supabase:", err);
     return [];
@@ -351,8 +457,12 @@ function filterMockSources(sources: WaterSourceWithPhotos[], filters?: Partial<W
 }
 
 export async function getWaterSourceBySlug(slug: string): Promise<WaterSourceWithPhotos | null> {
+  const iconsMap = await getWaterSourceCustomIcons();
+
   if (!isSupabaseConfigured()) {
-    return MOCK_IROSIN_WATER_SOURCES.find((s) => s.slug === slug) || null;
+    const found = MOCK_IROSIN_WATER_SOURCES.find((s) => s.slug === slug);
+    if (!found) return null;
+    return attachCustomIconsToSources([found], iconsMap)[0];
   }
   try {
     const supabase = createClient();
@@ -365,15 +475,19 @@ export async function getWaterSourceBySlug(slug: string): Promise<WaterSourceWit
     if (error || !data) {
       return null;
     }
-    return data as WaterSourceWithPhotos;
+    return attachCustomIconsToSources([data as WaterSourceWithPhotos], iconsMap)[0];
   } catch {
     return null;
   }
 }
 
 export async function getWaterSourceById(id: string): Promise<WaterSourceWithPhotos | null> {
+  const iconsMap = await getWaterSourceCustomIcons();
+
   if (!isSupabaseConfigured()) {
-    return MOCK_IROSIN_WATER_SOURCES.find((s) => s.id === id) || null;
+    const found = MOCK_IROSIN_WATER_SOURCES.find((s) => s.id === id);
+    if (!found) return null;
+    return attachCustomIconsToSources([found], iconsMap)[0];
   }
   try {
     const supabase = createClient();
@@ -386,15 +500,18 @@ export async function getWaterSourceById(id: string): Promise<WaterSourceWithPho
     if (error || !data) {
       return null;
     }
-    return data as WaterSourceWithPhotos;
+    return attachCustomIconsToSources([data as WaterSourceWithPhotos], iconsMap)[0];
   } catch {
     return null;
   }
 }
 
 export async function getAllWaterSourcesAdmin(): Promise<WaterSourceWithPhotos[]> {
+  const iconsMap = await getWaterSourceCustomIcons();
+
   if (!isSupabaseConfigured()) {
-    return MOCK_IROSIN_WATER_SOURCES.filter((s) => !s.archived_at);
+    const raw = MOCK_IROSIN_WATER_SOURCES.filter((s) => !s.archived_at);
+    return attachCustomIconsToSources(raw, iconsMap);
   }
   try {
     const admin = createAdminClient();
@@ -408,7 +525,7 @@ export async function getAllWaterSourcesAdmin(): Promise<WaterSourceWithPhotos[]
       console.error("Admin fetch error:", error);
       return [];
     }
-    return (data || []) as WaterSourceWithPhotos[];
+    return attachCustomIconsToSources((data || []) as WaterSourceWithPhotos[], iconsMap);
   } catch {
     return [];
   }

@@ -30,8 +30,10 @@ import {
   syncWaterSourcePhotosAction 
 } from "@/actions/water-actions";
 import { uploadWaterImage, ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE } from "@/lib/supabase/storage";
+import { compressImage } from "@/lib/utils/image-compression";
 import { getPublicStorageUrl } from "@/lib/utils/image-utils";
 import { invalidateAdminCache, ADMIN_CACHE_KEYS } from "@/lib/cache/admin-cache";
+import { waterCategories, waterAvailabilityStatuses } from "@/lib/validations/water-schema";
 import { 
   WATER_CATEGORIES, 
   AVAILABILITY_STATUSES, 
@@ -43,6 +45,8 @@ import {
 } from "@/lib/utils/constants";
 import { WaterCategory, WaterAvailabilityStatus, WaterVerificationStatus } from "@/types/water";
 import { cn } from "@/lib/utils";
+import { CircleIconPicker } from "@/components/admin/circle-icon-picker";
+import { getDefaultCircleIconForCategory } from "@/lib/map/circle-icons";
 
 // Dynamically import LocationPickerMap with SSR disabled for Leaflet compatibility
 const LocationPickerMap = dynamic(
@@ -97,6 +101,11 @@ export default function EditWaterSourcePage() {
   const [contactInformation, setContactInformation] = useState("");
   const [isPublished, setIsPublished] = useState(true);
 
+  // Custom Circle Pin Marker state
+  const [customIconId, setCustomIconId] = useState<string>("water_drop");
+  const [customColor, setCustomColor] = useState<string>("#2563eb");
+  const [hasUserCustomizedIcon, setHasUserCustomizedIcon] = useState(false);
+
   // Photos State (1 - 6 images allowed)
   const [existingPhotos, setExistingPhotos] = useState<ExistingPhoto[]>([]);
   const [stagedPhotos, setStagedPhotos] = useState<StagedPhoto[]>([]);
@@ -138,6 +147,16 @@ export default function EditWaterSourcePage() {
           setContactInformation(source.contact_information || "");
           setIsPublished(source.is_published);
 
+          if (source.custom_icon) {
+            setCustomIconId(source.custom_icon.iconId);
+            if (source.custom_icon.color) setCustomColor(source.custom_icon.color);
+            setHasUserCustomizedIcon(true);
+          } else {
+            const def = getDefaultCircleIconForCategory(source.category, source.name);
+            setCustomIconId(def.iconId);
+            setCustomColor(def.color);
+          }
+
           if (source.photos && Array.isArray(source.photos)) {
             setExistingPhotos(
               source.photos.map((p) => ({
@@ -159,7 +178,7 @@ export default function EditWaterSourcePage() {
   }, [waterId]);
 
   // Handle Photo File Selection (Cap at 6 images)
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -174,18 +193,26 @@ export default function EditWaterSourcePage() {
     const filesArray = Array.from(files);
     const validNewPhotos: StagedPhoto[] = [];
 
-    for (const file of filesArray) {
+    for (const rawFile of filesArray) {
       if (validNewPhotos.length >= remainingSlots) {
         break;
       }
 
-      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      if (!ALLOWED_IMAGE_TYPES.includes(rawFile.type)) {
         setError("Only JPG, PNG, and WebP image formats are supported.");
         continue;
       }
 
+      // Automatically compress & optimize high-res phone camera photos
+      let file = rawFile;
+      try {
+        file = await compressImage(rawFile, { maxWidth: 1600, maxHeight: 1600, quality: 0.85 });
+      } catch {
+        // Fallback to raw file
+      }
+
       if (file.size > MAX_FILE_SIZE) {
-        setError(`"${file.name}" exceeds the 5MB size limit.`);
+        setError(`"${file.name}" exceeds the 10MB size limit.`);
         continue;
       }
 
@@ -286,22 +313,24 @@ export default function EditWaterSourcePage() {
     try {
       // 1. Update water source basic attributes
       const updateRes = await updateWaterSourceAction(waterId, {
-        name,
+        name: name.trim(),
         category,
-        description,
-        latitude,
-        longitude,
-        address,
+        description: description.trim() || null,
+        latitude: Number(latitude),
+        longitude: Number(longitude),
+        address: address.trim() || null,
         barangay,
         availability_status: availabilityStatus,
         verification_status: verificationStatus,
-        operating_hours: operatingHours || undefined,
-        contact_information: contactInformation || undefined,
+        operating_hours: operatingHours.trim() || null,
+        contact_information: contactInformation.trim() || null,
         is_published: isPublished,
+        custom_icon_id: customIconId,
+        custom_icon_color: customColor,
       });
 
-      if (updateRes && (updateRes as any).error) {
-        throw new Error((updateRes as any).error);
+      if (!updateRes.success) {
+        throw new Error(updateRes.error || "Failed to update water resource");
       }
 
       // 2. Upload any staged new images
@@ -316,21 +345,13 @@ export default function EditWaterSourcePage() {
         const item = stagedPhotos[i];
         setSubmitStatusText(`Uploading photo ${i + 1} of ${stagedPhotos.length}...`);
 
-        let storageUrl = "";
-        try {
-          const uploadRes = await uploadWaterImage(item.file, "water-photos");
-          if (uploadRes.success && uploadRes.data?.url) {
-            storageUrl = uploadRes.data.url;
-          } else {
-            // Fallback to data URL
-            storageUrl = await fileToDataUrl(item.file);
-          }
-        } catch {
-          storageUrl = await fileToDataUrl(item.file);
+        const uploadRes = await uploadWaterImage(item.file, "water-photos");
+        if (!uploadRes.success || !uploadRes.data?.url) {
+          throw new Error(uploadRes.error || `Failed to upload image "${item.file.name}".`);
         }
 
         uploadedNewPhotos.push({
-          storage_path: storageUrl,
+          storage_path: uploadRes.data.url,
           caption: item.caption || null,
           is_primary: item.is_primary,
         });
@@ -355,14 +376,13 @@ export default function EditWaterSourcePage() {
 
       await syncWaterSourcePhotosAction(waterId, finalPhotosPayload);
 
-      invalidateAdminCache(ADMIN_CACHE_KEYS.WATER_SOURCES);
-      invalidateAdminCache(ADMIN_CACHE_KEYS.OVERVIEW_METRICS);
-      invalidateAdminCache(ADMIN_CACHE_KEYS.ANALYTICS);
+      invalidateAdminCache();
 
-      router.push(`/admin/water-sources/${waterId}`);
-    } catch (err) {
-      setError((err as Error).message || "Failed to update water resource");
+      window.location.href = `/admin/water-sources/${waterId}`;
+    } catch (err: any) {
+      setError(err.message || "Failed to update water resource");
       setSubmitting(false);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -423,13 +443,13 @@ export default function EditWaterSourcePage() {
                 <label className="text-sm font-semibold block mb-1 text-foreground">Category *</label>
                 <select
                   value={category}
-                  onChange={(e) => setCategory(e.target.value as WaterCategory)}
+                  onChange={(e) => setCategory(e.target.value)}
                   className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none"
                   required
                 >
-                  {WATER_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {CATEGORY_LABELS[cat]}
+                  {waterCategories.map((c) => (
+                    <option key={c} value={c}>
+                      {CATEGORY_LABELS[c] || c}
                     </option>
                   ))}
                 </select>
@@ -445,7 +465,7 @@ export default function EditWaterSourcePage() {
                 >
                   {IROSIN_BARANGAYS.map((b) => (
                     <option key={b} value={b}>
-                      {b}
+                      Barangay {b}
                     </option>
                   ))}
                 </select>
@@ -482,15 +502,33 @@ export default function EditWaterSourcePage() {
             </div>
           </div>
 
+          {/* Custom Circle Pin Marker Selector */}
+          <CircleIconPicker
+            selectedIconId={customIconId}
+            selectedColor={customColor}
+            category={category}
+            resourceName={name}
+            onChange={(iconId, color) => {
+              setCustomIconId(iconId);
+              setCustomColor(color);
+              setHasUserCustomizedIcon(true);
+            }}
+          />
+
           {/* Leaflet Map Component */}
           <div className="space-y-3">
             <div className="overflow-hidden rounded-2xl border border-border shadow-sm">
               <LocationPickerMap
                 latitude={latitude}
                 longitude={longitude}
-                onChange={(newLat, newLng) => {
+                markerIconId={customIconId}
+                markerColor={customColor}
+                onChange={(newLat, newLng, matchedBarangay) => {
                   setLatitude(newLat);
                   setLongitude(newLng);
+                  if (matchedBarangay && IROSIN_BARANGAYS.includes(matchedBarangay as any)) {
+                    setBarangay(matchedBarangay);
+                  }
                 }}
                 className="h-[340px] sm:h-[400px] w-full"
                 defaultLayer="standard"
@@ -717,12 +755,12 @@ export default function EditWaterSourcePage() {
               <label className="text-sm font-semibold block mb-1 text-foreground">Availability Status</label>
               <select
                 value={availabilityStatus}
-                onChange={(e) => setAvailabilityStatus(e.target.value as WaterAvailabilityStatus)}
+                onChange={(e) => setAvailabilityStatus(e.target.value)}
                 className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none"
               >
-                {AVAILABILITY_STATUSES.map((status) => (
-                  <option key={status} value={status}>
-                    {AVAILABILITY_STATUS_LABELS[status]}
+                {waterAvailabilityStatuses.map((st) => (
+                  <option key={st} value={st}>
+                    {AVAILABILITY_STATUS_LABELS[st] || st}
                   </option>
                 ))}
               </select>
@@ -732,12 +770,12 @@ export default function EditWaterSourcePage() {
               <label className="text-sm font-semibold block mb-1 text-foreground">Verification Status</label>
               <select
                 value={verificationStatus}
-                onChange={(e) => setVerificationStatus(e.target.value as WaterVerificationStatus)}
+                onChange={(e) => setVerificationStatus(e.target.value)}
                 className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none"
               >
-                {VERIFICATION_STATUSES.map((status) => (
-                  <option key={status} value={status}>
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                {["Verified", "Unverified"].map((st) => (
+                  <option key={st} value={st}>
+                    {st}
                   </option>
                 ))}
               </select>

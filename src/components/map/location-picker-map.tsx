@@ -23,10 +23,12 @@ import { IROSIN_BARANGAYS_DATA, BarangayLocation } from "@/components/map/map-se
 interface LocationPickerMapProps {
   latitude: number;
   longitude: number;
-  onChange?: (lat: number, lng: number) => void;
+  onChange?: (lat: number, lng: number, barangay?: string) => void;
   className?: string;
   defaultLayer?: "standard" | "satellite";
   readOnly?: boolean;
+  markerIconId?: string;
+  markerColor?: string;
 }
 
 const TILE_LAYERS = {
@@ -46,11 +48,13 @@ const TILE_LAYERS = {
 };
 
 /**
- * Calculates the nearest Irosin barangay or landmark name based on coordinates.
+ * Calculates the nearest Irosin barangay and returns both badge display label and clean barangay name.
  */
-function findNearestBarangayName(lat: number, lng: number): string {
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "Irosin";
-  let closest = "Irosin";
+function findNearestBarangayInfo(lat: number, lng: number): { label: string; barangay: string } {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return { label: "Irosin", barangay: "San Pedro (Poblacion)" };
+  }
+  let closestBarangay = "San Pedro (Poblacion)";
   let minDistance = Infinity;
 
   for (const b of IROSIN_BARANGAYS_DATA) {
@@ -59,14 +63,16 @@ function findNearestBarangayName(lat: number, lng: number): string {
     const dist = Math.sqrt(dLat * dLat + dLng * dLng);
     if (dist < minDistance) {
       minDistance = dist;
-      closest = b.name.startsWith("Brgy.") ? b.name : `Brgy. ${b.name}`;
+      closestBarangay = b.name;
     }
   }
 
-  if (minDistance < 0.05) {
-    return closest;
-  }
-  return "Irosin Water Point";
+  const label = closestBarangay.startsWith("Brgy.") ? closestBarangay : `Brgy. ${closestBarangay}`;
+  return { label, barangay: closestBarangay };
+}
+
+function findNearestBarangayName(lat: number, lng: number): string {
+  return findNearestBarangayInfo(lat, lng).label;
 }
 
 export default function LocationPickerMap({
@@ -76,6 +82,8 @@ export default function LocationPickerMap({
   className = "h-[340px]",
   defaultLayer = "satellite",
   readOnly = false,
+  markerIconId,
+  markerColor,
 }: LocationPickerMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -106,9 +114,13 @@ export default function LocationPickerMap({
 
   // Resolves the location name accurately: instant nearest calculation + debounced OSM reverse lookup
   const resolveLocation = (lat: number, lng: number, marker: L.Marker) => {
-    const localName = findNearestBarangayName(lat, lng);
-    setLocationName(localName);
-    marker.setIcon(createPickerMarkerIcon(localName));
+    const { label, barangay } = findNearestBarangayInfo(lat, lng);
+    setLocationName(label);
+    marker.setIcon(createPickerMarkerIcon(label, markerIconId, markerColor));
+
+    if (onChangeRef.current) {
+      onChangeRef.current(lat, lng, barangay);
+    }
 
     if (reverseGeocodeTimerRef.current) {
       clearTimeout(reverseGeocodeTimerRef.current);
@@ -126,7 +138,7 @@ export default function LocationPickerMap({
           if (village) {
             const formatted = village.startsWith("Brgy.") ? village : `Brgy. ${village}`;
             setLocationName(formatted);
-            marker.setIcon(createPickerMarkerIcon(formatted));
+            marker.setIcon(createPickerMarkerIcon(formatted, markerIconId, markerColor));
           }
         }
       } catch {
@@ -134,6 +146,13 @@ export default function LocationPickerMap({
       }
     }, 350);
   };
+
+  // Live reactivity when admin picks a custom icon or color
+  useEffect(() => {
+    if (markerRef.current) {
+      markerRef.current.setIcon(createPickerMarkerIcon(locationName, markerIconId, markerColor));
+    }
+  }, [markerIconId, markerColor, locationName]);
 
   // Click outside to close search dropdown
   useEffect(() => {
@@ -222,7 +241,7 @@ export default function LocationPickerMap({
 
     // Add marker with dynamic location badge (draggable only if not readOnly)
     const marker = L.marker([initialLat, initialLng], {
-      icon: createPickerMarkerIcon(initialName),
+      icon: createPickerMarkerIcon(initialName, markerIconId, markerColor),
       draggable: !readOnly,
       autoPan: !readOnly,
     }).addTo(map);
@@ -387,7 +406,7 @@ export default function LocationPickerMap({
     }
 
     if (!readOnly && onChangeRef.current) {
-      onChangeRef.current(newLat, newLng);
+      onChangeRef.current(newLat, newLng, loc.name.replace(/^Brgy\.\s*/, ""));
     }
   };
 
