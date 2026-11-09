@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { cn } from "@/lib/utils";
+import { CircleIconPicker } from "@/components/admin/circle-icon-picker";
+import { getDefaultCircleIconForCategory } from "@/lib/map/circle-icons";
 
 const LocationPickerMap = dynamic(
   () => import("@/components/map/location-picker-map"),
@@ -61,6 +63,19 @@ export function SubmissionForm() {
   const [notes, setNotes] = useState("");
   const [latitude, setLatitude] = useState(IROSIN_COORDINATES.lat);
   const [longitude, setLongitude] = useState(IROSIN_COORDINATES.lng);
+
+  // Custom Circle Pin Marker state (smart defaults based on category & name)
+  const [customIconId, setCustomIconId] = useState<string>("water_drop");
+  const [customColor, setCustomColor] = useState<string>("#2563eb");
+  const [hasUserCustomizedIcon, setHasUserCustomizedIcon] = useState(false);
+
+  useEffect(() => {
+    if (!hasUserCustomizedIcon) {
+      const def = getDefaultCircleIconForCategory(category, name);
+      setCustomIconId(def.iconId);
+      setCustomColor(def.color);
+    }
+  }, [category, name, hasUserCustomizedIcon]);
 
   // Photos State (1 - 6 images allowed)
   const [stagedPhotos, setStagedPhotos] = useState<StagedSubmissionPhoto[]>([]);
@@ -240,6 +255,8 @@ export function SubmissionForm() {
         notes: notes.trim() || null,
         latitude: Number(latitude),
         longitude: Number(longitude),
+        custom_icon_id: customIconId,
+        custom_icon_color: customColor,
       });
 
       if (!res || !("success" in res) || !res.success) {
@@ -445,10 +462,25 @@ export function SubmissionForm() {
           </button>
         </div>
 
+        {/* Custom Circle Pin Marker & Color Customizer */}
+        <CircleIconPicker
+          selectedIconId={customIconId}
+          selectedColor={customColor}
+          category={category}
+          resourceName={name}
+          onChange={(iconId, color) => {
+            setCustomIconId(iconId);
+            setCustomColor(color);
+            setHasUserCustomizedIcon(true);
+          }}
+        />
+
         {/* Interactive Location Picker Map */}
         <LocationPickerMap
           latitude={latitude}
           longitude={longitude}
+          markerIconId={customIconId}
+          markerColor={customColor}
           defaultLayer="standard"
           onChange={(newLat, newLng) => {
             setLatitude(newLat);

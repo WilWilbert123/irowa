@@ -11,7 +11,6 @@ import {
   Navigation, 
   Layers, 
   Compass, 
-  Crosshair, 
   Search, 
   X, 
   MapPin, 
@@ -37,12 +36,13 @@ const TILE_LAYERS = {
     url: MAP_CONFIG.tileUrl,
     attribution: MAP_CONFIG.attribution,
     maxNativeZoom: 18,
+    subdomains: "abc",
   },
   satellite: {
     name: "Satellite",
-    url: "https://mt{s}.google.com/vt/lyrs=y&apistyle=s.e:l.i|p.v:off,s.t:33|p.v:off&x={x}&y={y}&z={z}",
+    url: "https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
     attribution: "&copy; Google Maps",
-    subdomains: "0123",
+    subdomains: ["0", "1", "2", "3"],
     maxNativeZoom: 20,
   },
 };
@@ -73,6 +73,11 @@ function findNearestBarangayInfo(lat: number, lng: number): { label: string; bar
 
 function findNearestBarangayName(lat: number, lng: number): string {
   return findNearestBarangayInfo(lat, lng).label;
+}
+
+function normalizeLocationName(name: string): string {
+  if (!name) return name;
+  return name.replace(/tinampa/gi, "Tinampo");
 }
 
 export default function LocationPickerMap({
@@ -134,8 +139,9 @@ export default function LocationPickerMap({
         if (res.ok) {
           const json = await res.json();
           const addr = json?.address;
-          const village = addr?.village || addr?.quarter || addr?.suburb || addr?.neighbourhood;
+          let village = addr?.village || addr?.quarter || addr?.suburb || addr?.neighbourhood;
           if (village) {
+            village = normalizeLocationName(village);
             const formatted = village.startsWith("Brgy.") ? village : `Brgy. ${village}`;
             setLocationName(formatted);
             marker.setIcon(createPickerMarkerIcon(formatted, markerIconId, markerColor));
@@ -235,6 +241,9 @@ export default function LocationPickerMap({
       attribution: config.attribution,
       maxNativeZoom: config.maxNativeZoom,
       maxZoom: 19,
+      subdomains: (config as any).subdomains || "abc",
+      keepBuffer: 6,
+      updateWhenIdle: true,
     }).addTo(map);
 
     tileLayerRef.current = tileLayer;
@@ -341,6 +350,9 @@ export default function LocationPickerMap({
       attribution: config.attribution,
       maxNativeZoom: config.maxNativeZoom,
       maxZoom: 19,
+      subdomains: (config as any).subdomains || "abc",
+      keepBuffer: 6,
+      updateWhenIdle: true,
     }).addTo(map);
 
     tileLayerRef.current = newTile;
@@ -542,23 +554,6 @@ export default function LocationPickerMap({
         >
           <Compass className="h-4 w-4" />
         </button>
-      </div>
-
-      {/* Floating helper chip at bottom: indicates current location & active view */}
-      <div className="absolute bottom-3 left-3 right-3 sm:left-auto sm:right-3 z-[400] pointer-events-none">
-        <div className="bg-slate-950/85 backdrop-blur-md border border-white/20 text-white text-[11px] font-medium px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-2">
-          <Crosshair className="h-3.5 w-3.5 text-cyan-400 shrink-0 animate-pulse" />
-          <span>
-            <strong className="text-cyan-300 font-semibold">{locationName}</strong>
-            {" • "}
-            {readOnly
-              ? `Pinned: ${Number(latitude || 0).toFixed(5)}° N, ${Number(longitude || 0).toFixed(5)}° E`
-              : `${Number(latitude || 0).toFixed(5)}° N, ${Number(longitude || 0).toFixed(5)}° E`}
-          </span>
-          <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-blue-600/80 text-white ml-auto">
-            {activeLayer === "standard" ? "Street View" : "Satellite View"}
-          </span>
-        </div>
       </div>
     </div>
   );

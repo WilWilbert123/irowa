@@ -293,6 +293,8 @@ export default function AdminSubmissionDetailPage() {
               <LocationPickerMap
                 latitude={submission.latitude}
                 longitude={submission.longitude}
+                markerIconId={submission.custom_icon?.iconId}
+                markerColor={submission.custom_icon?.color}
                 readOnly={true}
                 defaultLayer="satellite"
                 className="h-[300px] w-full"

@@ -10,6 +10,10 @@ export interface WaterSubmissionWithPhotos extends WaterSubmissionRow {
   reviewer?: {
     display_name: string;
   } | null;
+  custom_icon?: {
+    iconId: string;
+    color?: string;
+  };
 }
 
 export type WaterSubmission = WaterSubmissionWithPhotos;
