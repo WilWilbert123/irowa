@@ -29,11 +29,31 @@ export async function uploadWaterImage(
     };
   }
 
-  try {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("bucket", bucket);
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("bucket", bucket);
 
+  // 1. Direct browser HTTP upload route for maximum speed and zero payload limitation
+  if (typeof window !== "undefined") {
+    try {
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (response.ok) {
+        const json = await response.json();
+        if (json.success && json.data) {
+          return { success: true, data: json.data };
+        }
+      }
+    } catch {
+      // Fallback to server action
+    }
+  }
+
+  // 2. Fallback to Server Action upload with admin privileges
+  try {
     const res = await uploadStorageImageAction(formData);
     return res;
   } catch (err: any) {

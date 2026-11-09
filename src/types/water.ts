@@ -23,6 +23,10 @@ export interface WaterSourceWithPhotos extends WaterSourceRow {
   unread_reports_count?: number;
   chat_room_id?: string;
   distance_km?: number;
+  custom_icon?: {
+    iconId: string;
+    color?: string;
+  };
 }
 
 export type WaterSource = WaterSourceWithPhotos;

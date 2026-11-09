@@ -5,6 +5,11 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   cacheComponents: true,
   partialPrefetching: true,
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "10mb",
+    },
+  },
   images: {
     remotePatterns: [
       {

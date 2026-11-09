@@ -237,8 +237,14 @@ export function MapView({
 
     visibleSources.forEach((source) => {
       const isSelected = selectedSource?.id === source.id;
-      // Pins have no text badge - clean category icon only
-      const icon = createCategoryDivIcon(source.category, isSelected, source.availability_status);
+      // Pins have no text badge - clean category or custom circle icon only
+      const icon = createCategoryDivIcon(
+        source.category,
+        isSelected,
+        source.availability_status,
+        source.custom_icon?.iconId,
+        source.custom_icon?.color
+      );
       const marker = L.marker([source.latitude, source.longitude], { icon });
 
       marker.bindTooltip(

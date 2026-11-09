@@ -10,6 +10,7 @@ import {
   syncWaterSourcePhotosAction 
 } from "@/actions/water-actions";
 import { uploadWaterImage, ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE } from "@/lib/supabase/storage";
+import { compressImage } from "@/lib/utils/image-compression";
 import { waterCategories, waterAvailabilityStatuses } from "@/lib/validations/water-schema";
 import { invalidateAdminCache, ADMIN_CACHE_KEYS } from "@/lib/cache/admin-cache";
 import { 
@@ -37,6 +38,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { CircleIconPicker } from "@/components/admin/circle-icon-picker";
+import { getDefaultCircleIconForCategory } from "@/lib/map/circle-icons";
 
 // Dynamically import LocationPickerMap with SSR disabled for Leaflet compatibility
 const LocationPickerMap = dynamic(
@@ -77,6 +80,19 @@ export default function AdminNewWaterSourcePage() {
   const [longitude, setLongitude] = useState(IROSIN_COORDINATES.lng);
   const [isPublished, setIsPublished] = useState(true);
 
+  // Custom Circle Pin Marker state (smart defaults based on category & name)
+  const [customIconId, setCustomIconId] = useState<string>("water_drop");
+  const [customColor, setCustomColor] = useState<string>("#2563eb");
+  const [hasUserCustomizedIcon, setHasUserCustomizedIcon] = useState(false);
+
+  useEffect(() => {
+    if (!hasUserCustomizedIcon) {
+      const def = getDefaultCircleIconForCategory(category, name);
+      setCustomIconId(def.iconId);
+      setCustomColor(def.color);
+    }
+  }, [category, name, hasUserCustomizedIcon]);
+
   // Photos State (1 - 6 images allowed)
   const [stagedPhotos, setStagedPhotos] = useState<StagedPhoto[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -105,8 +121,8 @@ export default function AdminNewWaterSourcePage() {
     };
   }, [stagedPhotos]);
 
-  // Handle Photo File Selection (Cap at 6 images)
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle Photo File Selection (Cap at 6 images) with client-side compression
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -121,18 +137,26 @@ export default function AdminNewWaterSourcePage() {
     const filesArray = Array.from(files);
     const validNewPhotos: StagedPhoto[] = [];
 
-    for (const file of filesArray) {
-      if (validNewPhotos.length >= remainingSlots) {
+    for (const rawFile of filesArray) {
+      if (validNewPhotos.length + totalPhotosCount >= maxPhotosAllowed) {
         break;
       }
 
-      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      if (!ALLOWED_IMAGE_TYPES.includes(rawFile.type)) {
         setErrorMsg("Only JPG, PNG, and WebP image formats are supported.");
         continue;
       }
 
+      // Automatically compress & optimize high-res phone camera photos
+      let file = rawFile;
+      try {
+        file = await compressImage(rawFile, { maxWidth: 1600, maxHeight: 1600, quality: 0.85 });
+      } catch {
+        // Fallback to raw file
+      }
+
       if (file.size > MAX_FILE_SIZE) {
-        setErrorMsg(`"${file.name}" exceeds the 5MB size limit.`);
+        setErrorMsg(`"${file.name}" exceeds the 10MB size limit.`);
         continue;
       }
 
@@ -187,16 +211,6 @@ export default function AdminNewWaterSourcePage() {
     );
   };
 
-  // Helper to convert file to Data URL if storage bucket fails
-  const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -219,7 +233,7 @@ export default function AdminNewWaterSourcePage() {
     setUploadStatusText("Validating water source information...");
 
     try {
-      // 1. Upload staged photos direct to Supabase
+      // 1. Upload staged photos direct to Supabase storage
       const uploadedPhotosPayload: Array<{
         storage_path: string;
         caption?: string | null;
@@ -231,32 +245,28 @@ export default function AdminNewWaterSourcePage() {
           const item = stagedPhotos[i];
           const currentPercent = Math.round(10 + (i / stagedPhotos.length) * 65);
           setUploadProgress(currentPercent);
-          setUploadStatusText(`Uploading photo ${i + 1} of ${stagedPhotos.length} to Supabase...`);
+          setUploadStatusText(`Uploading photo ${i + 1} of ${stagedPhotos.length} to storage...`);
 
-          let storageUrl = "";
-          try {
-            const uploadRes = await uploadWaterImage(item.file, "water-photos");
-            if (uploadRes.success && uploadRes.data?.url) {
-              storageUrl = uploadRes.data.url;
-            } else {
-              // Fallback to data URL
-              storageUrl = await fileToDataUrl(item.file);
-            }
-          } catch {
-            storageUrl = await fileToDataUrl(item.file);
+          const uploadRes = await uploadWaterImage(item.file, "water-photos");
+          if (!uploadRes.success || !uploadRes.data?.url) {
+            throw new Error(uploadRes.error || `Failed to upload image "${item.file.name}".`);
           }
 
           uploadedPhotosPayload.push({
-            storage_path: storageUrl,
+            storage_path: uploadRes.data.url,
             caption: item.caption || null,
             is_primary: item.is_primary,
           });
         }
       }
 
-      // 2. Create water source record in Supabase
-      setUploadProgress(80);
+      // 2. Create water source record atomically with photos attached
+      setUploadProgress(85);
       setUploadStatusText("Publishing water source to municipal directory...");
+
+      if (uploadedPhotosPayload.length > 0 && !uploadedPhotosPayload.some((p) => p.is_primary)) {
+        uploadedPhotosPayload[0].is_primary = true;
+      }
 
       const res = await createWaterSourceAction({
         name: name.trim(),
@@ -270,36 +280,29 @@ export default function AdminNewWaterSourcePage() {
         latitude: Number(latitude),
         longitude: Number(longitude),
         is_published: isPublished,
+        photos: uploadedPhotosPayload,
+        custom_icon_id: customIconId,
+        custom_icon_color: customColor,
       });
 
       if (!res.success || !res.id) {
         throw new Error(res.error || "Failed to create water source");
       }
 
-      // 3. Link uploaded photos in water_photos table
-      if (uploadedPhotosPayload.length > 0) {
-        setUploadProgress(92);
-        setUploadStatusText("Linking gallery photos & cover image...");
-
-        if (!uploadedPhotosPayload.some((p) => p.is_primary)) {
-          uploadedPhotosPayload[0].is_primary = true;
-        }
-
-        await syncWaterSourcePhotosAction(res.id, uploadedPhotosPayload);
-      }
-
       setUploadProgress(100);
       setUploadStatusText("Complete! Redirecting...");
-      
-      // Clear cache so the directory table reflects the new item immediately
-      invalidateAdminCache(ADMIN_CACHE_KEYS.WATER_SOURCES);
-      invalidateAdminCache(ADMIN_CACHE_KEYS.OVERVIEW_METRICS);
-      invalidateAdminCache(ADMIN_CACHE_KEYS.ANALYTICS);
+
+      // Clear cache so the directory table and metrics reflect the new item immediately
+      invalidateAdminCache();
 
       window.location.href = "/admin/water-sources";
     } catch (err: any) {
-      setErrorMsg(err.message || "An unexpected error occurred while creating water source");
+      console.error("Submit error:", err);
       setIsSaving(false);
+      setUploadProgress(0);
+      setUploadStatusText("");
+      setErrorMsg(err.message || "Failed to save water source. Please try again.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -431,15 +434,33 @@ export default function AdminNewWaterSourcePage() {
             </div>
           </div>
 
+          {/* Custom Circle Pin Marker Selector */}
+          <CircleIconPicker
+            selectedIconId={customIconId}
+            selectedColor={customColor}
+            category={category}
+            resourceName={name}
+            onChange={(iconId, color) => {
+              setCustomIconId(iconId);
+              setCustomColor(color);
+              setHasUserCustomizedIcon(true);
+            }}
+          />
+
           {/* Leaflet Map Component */}
           <div className="space-y-3">
             <div className="overflow-hidden rounded-2xl border border-border shadow-sm">
               <LocationPickerMap
                 latitude={latitude}
                 longitude={longitude}
-                onChange={(newLat, newLng) => {
+                markerIconId={customIconId}
+                markerColor={customColor}
+                onChange={(newLat, newLng, matchedBarangay) => {
                   setLatitude(newLat);
                   setLongitude(newLng);
+                  if (matchedBarangay && IROSIN_BARANGAYS.includes(matchedBarangay as any)) {
+                    setBarangay(matchedBarangay);
+                  }
                 }}
                 className="h-[340px] sm:h-[400px] w-full"
                 defaultLayer="standard"
