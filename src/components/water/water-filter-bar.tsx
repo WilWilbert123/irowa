@@ -26,6 +26,7 @@ const CATEGORY_ITEMS: Array<{ label: string; value: WaterCategory | "All" }> = [
   { label: "Waterfalls", value: "Waterfall" },
   { label: "Springs", value: "Spring" },
   { label: "Resorts", value: "Resort" },
+  { label: "Lakes", value: "Lake" },
   { label: "Refilling", value: "Water Refilling Station" },
   { label: "Public Points", value: "Public Water Source" },
   { label: "Deep Wells", value: "Deep Well" },

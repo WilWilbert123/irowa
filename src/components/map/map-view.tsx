@@ -41,7 +41,7 @@ const TILE_LAYERS = {
     maxNativeZoom: 18,
   },
   satellite: {
-    url: "https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+    url: "https://mt{s}.google.com/vt/lyrs=y&apistyle=s.e:l.i|p.v:off,s.t:33|p.v:off&x={x}&y={y}&z={z}",
     attribution: "&copy; Google Maps",
     subdomains: ["0", "1", "2", "3"],
     maxNativeZoom: 20,

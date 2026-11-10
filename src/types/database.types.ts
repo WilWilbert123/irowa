@@ -537,6 +537,7 @@ export type WaterCategory =
   | "River"
   | "Waterfall"
   | "Resort"
+  | "Lake"
   | "Water Refilling Station"
   | "Deep Well"
   | "Community Water Point"

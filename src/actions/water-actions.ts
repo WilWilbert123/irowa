@@ -6,7 +6,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { waterSourceSchema } from "@/lib/validations/water-schema";
 import { slugify } from "@/lib/utils/formatters";
 import { logAdminAction } from "@/lib/services/audit-service";
-import { getWaterSourceById, getPublishedWaterSources, getAllWaterSourcesAdmin, MOCK_IROSIN_WATER_SOURCES, saveWaterSourceCustomIcon, getWaterSourceCustomIcons } from "@/lib/services/water-service";
+import { getWaterSourceById, getPublishedWaterSources, getAllWaterSourcesAdmin, MOCK_IROSIN_WATER_SOURCES, saveWaterSourceCustomIcon, getWaterSourceCustomIcons, saveWaterSourceCategoryOverride } from "@/lib/services/water-service";
 import { sendPushNotificationToSubscribers, MOCK_NOTIFICATIONS } from "@/lib/services/notification-service";
 import { revalidatePath } from "next/cache";
 
@@ -37,6 +37,7 @@ const CATEGORY_NORMALIZER: Record<string, string> = {
   river: "River",
   waterfall: "Waterfall",
   resort: "Resort",
+  lake: "Lake",
   water_refilling_station: "Water Refilling Station",
   "water refilling station": "Water Refilling Station",
   deep_well: "Deep Well",
@@ -49,6 +50,7 @@ const CATEGORY_NORMALIZER: Record<string, string> = {
   River: "River",
   Waterfall: "Waterfall",
   Resort: "Resort",
+  Lake: "Lake",
   "Water Refilling Station": "Water Refilling Station",
   "Deep Well": "Deep Well",
   "Community Water Point": "Community Water Point",
@@ -147,12 +149,15 @@ export async function createWaterSourceAction(formData: any) {
 
   try {
     const admin = createAdminClient();
-    const { data: newSource, error } = await admin
+    let insertCategory = data.category;
+    let fallbackToOther = false;
+
+    let { data: newSource, error } = await admin
       .from("water_sources")
       .insert({
         name: data.name,
         slug,
-        category: data.category,
+        category: insertCategory,
         description: data.description || null,
         latitude: data.latitude,
         longitude: data.longitude,
@@ -167,8 +172,37 @@ export async function createWaterSourceAction(formData: any) {
       .select("id")
       .single();
 
-    if (error) {
-      return { success: false, error: error.message };
+    if (error && (error.code === "23514" || error.message?.includes("water_sources_category_check")) && insertCategory === "Lake") {
+      fallbackToOther = true;
+      const retry = await admin
+        .from("water_sources")
+        .insert({
+          name: data.name,
+          slug,
+          category: "Other",
+          description: data.description || null,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          address: data.address || null,
+          barangay: data.barangay || null,
+          availability_status: data.availability_status,
+          verification_status: "Verified",
+          operating_hours: data.operating_hours || null,
+          contact_information: data.contact_information || null,
+          is_published: data.is_published,
+        })
+        .select("id")
+        .single();
+      newSource = retry.data;
+      error = retry.error;
+    }
+
+    if (error || !newSource) {
+      return { success: false, error: error?.message || "Failed to create water source" };
+    }
+
+    if (fallbackToOther || insertCategory === "Lake") {
+      await saveWaterSourceCategoryOverride(newSource.id, "Lake");
     }
 
     // Direct atomic attachment of gallery photos if included
@@ -275,10 +309,24 @@ export async function updateWaterSourceAction(id: string, formData: any) {
 
   try {
     const admin = createAdminClient();
-    const { error } = await admin
+    let { error } = await admin
       .from("water_sources")
       .update(updatePayload)
       .eq("id", id);
+
+    if (error && (error.code === "23514" || error.message?.includes("water_sources_category_check")) && updatePayload.category === "Lake") {
+      const retryPayload = { ...updatePayload, category: "Other" };
+      const retryRes = await admin
+        .from("water_sources")
+        .update(retryPayload)
+        .eq("id", id);
+      error = retryRes.error;
+      if (!error) {
+        await saveWaterSourceCategoryOverride(id, "Lake");
+      }
+    } else if (!error && updatePayload.category) {
+      await saveWaterSourceCategoryOverride(id, updatePayload.category);
+    }
 
     if (error) return { success: false, error: error.message };
 

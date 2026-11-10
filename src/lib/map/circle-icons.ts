@@ -379,6 +379,8 @@ export function getDefaultCircleIconForCategory(
   switch (category) {
     case "Resort":
       return { iconId: "resort", color: "#a855f7" };
+    case "Lake":
+      return { iconId: "lake", color: "#0369a1" };
     case "River":
       return { iconId: "river", color: "#2563eb" };
     case "Waterfall":

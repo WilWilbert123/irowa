@@ -7,6 +7,7 @@ export const waterCategories = [
   "River",
   "Waterfall",
   "Resort",
+  "Lake",
   "Water Refilling Station",
   "Deep Well",
   "Community Water Point",
