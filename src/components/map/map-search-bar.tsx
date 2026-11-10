@@ -29,7 +29,7 @@ export const IROSIN_BARANGAYS_DATA: BarangayLocation[] = [
   { id: "b-buenavista", name: "Buenavista", type: "barangay", latitude: 12.6884, longitude: 124.0284, zoom: 15, aliases: ["buenavista", "brgy buenavista", "barangay buenavista"] },
   { id: "b-bulawan", name: "Bulawan", type: "barangay", latitude: 12.7294, longitude: 123.9675, zoom: 15, aliases: ["bulawan", "brgy bulawan", "barangay bulawan"] },
   { id: "b-carriedo", name: "Carriedo", type: "barangay", latitude: 12.6944, longitude: 124.0352, zoom: 15, aliases: ["carriedo", "brgy carriedo", "barangay carriedo"] },
-  { id: "b-casiguran-road", name: "Casiguran Road", type: "barangay", latitude: 12.7380, longitude: 124.0250, zoom: 15, aliases: ["casiguran road", "casiguran"] },
+  { id: "b-cawayan", name: "Cawayan", type: "barangay", latitude: 12.7288, longitude: 124.0264, zoom: 15, aliases: ["cawayan", "brgy cawayan", "barangay cawayan"] },
   { id: "b-cogon", name: "Cogon", type: "barangay", latitude: 12.7478, longitude: 124.0123, zoom: 15, aliases: ["cogon", "sitio cogon", "brgy cogon"] },
   { id: "b-gulang-gulang", name: "Gulang-Gulang", type: "barangay", latitude: 12.7387, longitude: 124.0006, zoom: 15, aliases: ["gulang-gulang", "gulang gulang", "gulang"] },
   { id: "b-gumapia", name: "Gumapia", type: "barangay", latitude: 12.7062, longitude: 123.9942, zoom: 15, aliases: ["gumapia", "brgy gumapia", "barangay gumapia"] },

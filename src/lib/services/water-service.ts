@@ -89,21 +89,97 @@ export async function saveWaterSourceCustomIcon(
   }
 }
 
+let categoryOverridesCache: Record<string, string> | null = null;
+let lastCategoryOverridesTime = 0;
+
+export async function getWaterSourceCategoryOverrides(): Promise<Record<string, string>> {
+  const now = Date.now();
+  if (categoryOverridesCache && now - lastCategoryOverridesTime < 10000) {
+    return categoryOverridesCache;
+  }
+
+  if (!isSupabaseConfigured()) {
+    return categoryOverridesCache || {};
+  }
+
+  try {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("application_settings")
+      .select("value")
+      .eq("key", "water_source_categories")
+      .maybeSingle();
+
+    if (data?.value && typeof data.value === "object") {
+      categoryOverridesCache = data.value as Record<string, string>;
+      lastCategoryOverridesTime = now;
+      return categoryOverridesCache;
+    }
+  } catch {
+    // fallback
+  }
+  return categoryOverridesCache || {};
+}
+
+export async function saveWaterSourceCategoryOverride(
+  waterSourceId: string,
+  category: string
+): Promise<boolean> {
+  if (!waterSourceId || !category) return false;
+  if (!categoryOverridesCache) categoryOverridesCache = {};
+  categoryOverridesCache[waterSourceId] = category;
+  lastCategoryOverridesTime = Date.now();
+
+  if (!isSupabaseConfigured()) return true;
+
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("application_settings")
+      .select("value")
+      .eq("key", "water_source_categories")
+      .maybeSingle();
+
+    const currentMap =
+      data?.value && typeof data.value === "object"
+        ? (data.value as Record<string, any>)
+        : {};
+    currentMap[waterSourceId] = category;
+
+    await admin.from("application_settings").upsert(
+      {
+        key: "water_source_categories",
+        value: currentMap,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" }
+    );
+    return true;
+  } catch (err) {
+    console.error("Error saving category override:", err);
+    return false;
+  }
+}
+
 export function attachCustomIconsToSources(
   sources: WaterSourceWithPhotos[],
-  iconsMap: Record<string, { iconId: string; color?: string }>
+  iconsMap: Record<string, { iconId: string; color?: string }>,
+  categoryOverrides?: Record<string, string>
 ): WaterSourceWithPhotos[] {
   return sources.map((source) => {
+    const category = categoryOverrides?.[source.id] || source.category;
     const custom = iconsMap[source.id];
     if (custom) {
       return {
         ...source,
+        category: category as any,
         custom_icon: custom,
       };
     }
     return {
       ...source,
-      custom_icon: getDefaultCircleIconForCategory(source.category, source.name),
+      category: category as any,
+      custom_icon: getDefaultCircleIconForCategory(category, source.name),
     };
   });
 }
@@ -394,10 +470,11 @@ export const MOCK_IROSIN_WATER_SOURCES: WaterSourceWithPhotos[] = [
 
 export async function getPublishedWaterSources(filters?: Partial<WaterFilterState>): Promise<WaterSourceWithPhotos[]> {
   const iconsMap = await getWaterSourceCustomIcons();
+  const categoryOverrides = await getWaterSourceCategoryOverrides();
 
   if (!isSupabaseConfigured()) {
     const mockFiltered = filterMockSources(MOCK_IROSIN_WATER_SOURCES, filters);
-    return attachCustomIconsToSources(mockFiltered, iconsMap);
+    return attachCustomIconsToSources(mockFiltered, iconsMap, categoryOverrides);
   }
 
   try {
@@ -409,7 +486,9 @@ export async function getPublishedWaterSources(filters?: Partial<WaterFilterStat
       .is("archived_at", null);
 
     if (filters?.category && filters.category !== "All") {
-      query = query.eq("category", filters.category as WaterCategory);
+      if (filters.category !== "Lake") {
+        query = query.eq("category", filters.category as WaterCategory);
+      }
     }
     if (filters?.availability && filters.availability !== "All") {
       query = query.eq("availability_status", filters.availability as WaterAvailabilityStatus);
@@ -426,7 +505,11 @@ export async function getPublishedWaterSources(filters?: Partial<WaterFilterStat
       console.error("Supabase query error:", error);
       return [];
     }
-    return attachCustomIconsToSources((data || []) as WaterSourceWithPhotos[], iconsMap);
+    let decorated = attachCustomIconsToSources((data || []) as WaterSourceWithPhotos[], iconsMap, categoryOverrides);
+    if (filters?.category && filters.category !== "All") {
+      decorated = decorated.filter((s) => s.category === filters.category);
+    }
+    return decorated;
   } catch (err) {
     console.error("Failed to fetch water sources from Supabase:", err);
     return [];
@@ -458,11 +541,12 @@ function filterMockSources(sources: WaterSourceWithPhotos[], filters?: Partial<W
 
 export async function getWaterSourceBySlug(slug: string): Promise<WaterSourceWithPhotos | null> {
   const iconsMap = await getWaterSourceCustomIcons();
+  const categoryOverrides = await getWaterSourceCategoryOverrides();
 
   if (!isSupabaseConfigured()) {
     const found = MOCK_IROSIN_WATER_SOURCES.find((s) => s.slug === slug);
     if (!found) return null;
-    return attachCustomIconsToSources([found], iconsMap)[0];
+    return attachCustomIconsToSources([found], iconsMap, categoryOverrides)[0];
   }
   try {
     const supabase = createClient();
@@ -475,7 +559,7 @@ export async function getWaterSourceBySlug(slug: string): Promise<WaterSourceWit
     if (error || !data) {
       return null;
     }
-    return attachCustomIconsToSources([data as WaterSourceWithPhotos], iconsMap)[0];
+    return attachCustomIconsToSources([data as WaterSourceWithPhotos], iconsMap, categoryOverrides)[0];
   } catch {
     return null;
   }
@@ -483,11 +567,12 @@ export async function getWaterSourceBySlug(slug: string): Promise<WaterSourceWit
 
 export async function getWaterSourceById(id: string): Promise<WaterSourceWithPhotos | null> {
   const iconsMap = await getWaterSourceCustomIcons();
+  const categoryOverrides = await getWaterSourceCategoryOverrides();
 
   if (!isSupabaseConfigured()) {
     const found = MOCK_IROSIN_WATER_SOURCES.find((s) => s.id === id);
     if (!found) return null;
-    return attachCustomIconsToSources([found], iconsMap)[0];
+    return attachCustomIconsToSources([found], iconsMap, categoryOverrides)[0];
   }
   try {
     const supabase = createClient();
@@ -500,7 +585,7 @@ export async function getWaterSourceById(id: string): Promise<WaterSourceWithPho
     if (error || !data) {
       return null;
     }
-    return attachCustomIconsToSources([data as WaterSourceWithPhotos], iconsMap)[0];
+    return attachCustomIconsToSources([data as WaterSourceWithPhotos], iconsMap, categoryOverrides)[0];
   } catch {
     return null;
   }
@@ -508,10 +593,11 @@ export async function getWaterSourceById(id: string): Promise<WaterSourceWithPho
 
 export async function getAllWaterSourcesAdmin(): Promise<WaterSourceWithPhotos[]> {
   const iconsMap = await getWaterSourceCustomIcons();
+  const categoryOverrides = await getWaterSourceCategoryOverrides();
 
   if (!isSupabaseConfigured()) {
     const raw = MOCK_IROSIN_WATER_SOURCES.filter((s) => !s.archived_at);
-    return attachCustomIconsToSources(raw, iconsMap);
+    return attachCustomIconsToSources(raw, iconsMap, categoryOverrides);
   }
   try {
     const admin = createAdminClient();
@@ -525,7 +611,7 @@ export async function getAllWaterSourcesAdmin(): Promise<WaterSourceWithPhotos[]
       console.error("Admin fetch error:", error);
       return [];
     }
-    return attachCustomIconsToSources((data || []) as WaterSourceWithPhotos[], iconsMap);
+    return attachCustomIconsToSources((data || []) as WaterSourceWithPhotos[], iconsMap, categoryOverrides);
   } catch {
     return [];
   }
