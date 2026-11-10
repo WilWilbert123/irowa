@@ -52,6 +52,26 @@ export function createLocationMarkerIcon(): L.DivIcon {
   });
 }
 
+export function createNavLocationIcon(mode: string = "motorcycle"): L.DivIcon {
+  const modeEmoji = mode === "walking" ? "🚶" : mode === "driving" ? "🚗" : "🏍️";
+  return L.divIcon({
+    html: `
+      <div class="relative flex items-center justify-center pointer-events-none select-none">
+        <!-- Outer pulsing radar rings -->
+        <div class="w-12 h-12 bg-blue-500/20 rounded-full animate-ping absolute"></div>
+        <div class="w-8 h-8 bg-blue-500/35 rounded-full absolute"></div>
+        <!-- Inner core blue circle with white border -->
+        <div class="w-6 h-6 bg-blue-600 rounded-full border-2 border-white shadow-xl flex items-center justify-center z-10 text-[11px] font-bold text-white leading-none">
+          ${modeEmoji}
+        </div>
+      </div>
+    `,
+    className: "nav-user-location-marker",
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
+  });
+}
+
 export function createStartLocationIcon(isGPS: boolean = true, label?: string): L.DivIcon {
   const displayLabel = label || (isGPS ? "START: You Are Here" : "START: Irosin Proper");
   const badgeBg = isGPS ? "bg-emerald-600" : "bg-blue-600";

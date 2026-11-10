@@ -1,5 +1,7 @@
 // src/lib/map/map-utils.ts
 
+export type TravelMode = "walking" | "motorcycle" | "driving";
+
 export function calculateDistanceKm(
   lat1: number,
   lon1: number,
@@ -32,6 +34,15 @@ export function formatDistance(distanceKm?: number): string {
   return `${distanceKm.toFixed(1)} km`;
 }
 
+export function formatDurationMinutes(minutes: number): string {
+  if (minutes < 1) return "< 1 min";
+  if (minutes < 60) return `~${minutes} mins`;
+  const hrs = Math.floor(minutes / 60);
+  const remainingMins = minutes % 60;
+  if (remainingMins === 0) return `~${hrs} hr${hrs > 1 ? "s" : ""}`;
+  return `~${hrs} hr ${remainingMins} mins`;
+}
+
 export function getDirectionsUrl(lat: number, lng: number, name?: string): string {
   const encodedName = name ? encodeURIComponent(name) : "";
   return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&destination_place_id=${encodedName}`;
@@ -50,9 +61,45 @@ export interface InAppRoute {
   offRoadDistanceKm?: number;
   distanceKm: number;
   durationMinutes: number;
+  travelMode: TravelMode;
+  modeDurations: {
+    walking: number;
+    motorcycle: number;
+    driving: number;
+  };
   steps: RouteStep[];
   originName: string;
   destinationName: string;
+  originLat: number;
+  originLng: number;
+  destinationLat: number;
+  destinationLng: number;
+}
+
+export function computeModeDurations(roadKm: number, offRoadKm: number = 0) {
+  // 1. Walking: ~4.5 km/h walking speed on road; ~3.0 km/h on mountain/trail
+  const walkMinutes = Math.max(
+    1,
+    Math.round((roadKm / 4.5) * 60 + (offRoadKm / 3.0) * 60)
+  );
+
+  // 2. Motor / Motorcycle: Primary transport in Irosin/Sorsogon. ~38 km/h on paved road, ~15 km/h trail approach
+  const motorMinutes = Math.max(
+    1,
+    Math.round((roadKm / 38) * 60 + (offRoadKm / 15) * 60)
+  );
+
+  // 3. Car / Driving: ~32 km/h rural road average. Cannot drive on mountain trail (must walk off-road at 3.5 km/h)
+  const carMinutes = Math.max(
+    1,
+    Math.round((roadKm / 32) * 60 + (offRoadKm / 3.5) * 60)
+  );
+
+  return {
+    walking: walkMinutes,
+    motorcycle: motorMinutes,
+    driving: carMinutes,
+  };
 }
 
 export async function fetchInAppRoute(
@@ -61,7 +108,8 @@ export async function fetchInAppRoute(
   destLat: number,
   destLng: number,
   originName: string = "Current Location",
-  destinationName: string = "Destination"
+  destinationName: string = "Destination",
+  mode: TravelMode = "motorcycle"
 ): Promise<InAppRoute> {
   try {
     const url = `https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true`;
@@ -122,11 +170,9 @@ export async function fetchInAppRoute(
         });
       }
 
-      const totalDistanceKm = Math.round(((route.distance / 1000) + offRoadDistanceKm) * 10) / 10;
-      const totalDurationMinutes = Math.max(
-        1,
-        Math.round(route.duration / 60) + (offRoadDistanceKm > 0.015 ? Math.max(1, Math.round((offRoadDistanceKm / 3.5) * 60)) : 0)
-      );
+      const roadKm = route.distance / 1000;
+      const totalDistanceKm = Math.round((roadKm + offRoadDistanceKm) * 10) / 10;
+      const modeDurations = computeModeDurations(roadKm, offRoadDistanceKm);
 
       return {
         coordinates: coords,
@@ -134,10 +180,16 @@ export async function fetchInAppRoute(
         isOffRoad: offRoadDistanceKm > 0.015,
         offRoadDistanceKm: Math.round(offRoadDistanceKm * 10) / 10,
         distanceKm: totalDistanceKm,
-        durationMinutes: totalDurationMinutes,
+        durationMinutes: modeDurations[mode],
+        travelMode: mode,
+        modeDurations,
         steps,
         originName,
         destinationName,
+        originLat,
+        originLng,
+        destinationLat: destLat,
+        destinationLng: destLng,
       };
     }
   } catch (e) {
@@ -146,19 +198,27 @@ export async function fetchInAppRoute(
 
   // Fallback direct line if network is offline
   const dist = calculateDistanceKm(originLat, originLng, destLat, destLng);
+  const modeDurations = computeModeDurations(dist, 0);
+
   return {
     coordinates: [
       [originLat, originLng],
       [destLat, destLng],
     ],
     distanceKm: dist,
-    durationMinutes: Math.max(2, Math.round((dist / 30) * 60)), // ~30km/h average rural speed
+    durationMinutes: modeDurations[mode],
+    travelMode: mode,
+    modeDurations,
     steps: [
-      { instruction: `Head directly toward ${destinationName}`, distanceMeters: dist * 1000, durationSeconds: (dist / 30) * 3600 },
+      { instruction: `Head directly toward ${destinationName}`, distanceMeters: dist * 1000, durationSeconds: modeDurations[mode] * 60 },
       { instruction: `Arrive at ${destinationName}`, distanceMeters: 0, durationSeconds: 0 },
     ],
     originName,
     destinationName,
+    originLat,
+    originLng,
+    destinationLat: destLat,
+    destinationLng: destLng,
   };
 }
 
@@ -166,4 +226,3 @@ function capitalizeFirst(str: string): string {
   if (!str) return "Turn";
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
-
