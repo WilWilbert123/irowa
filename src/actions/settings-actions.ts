@@ -15,6 +15,7 @@ export interface SystemSettingsData {
   mapCenterLat: number;
   mapCenterLng: number;
   defaultZoom: number;
+  hideMapPoiMarkers?: boolean;
 }
 
 export async function getSystemSettingsAction(): Promise<SystemSettingsData> {
@@ -27,6 +28,7 @@ export async function getSystemSettingsAction(): Promise<SystemSettingsData> {
     mapCenterLat: 12.7042,
     mapCenterLng: 124.0326,
     defaultZoom: 13,
+    hideMapPoiMarkers: false,
   };
 
   if (!isSupabaseConfigured()) {
@@ -58,6 +60,7 @@ export async function getSystemSettingsAction(): Promise<SystemSettingsData> {
       mapCenterLat: map.default_center?.[0] ?? defaults.mapCenterLat,
       mapCenterLng: map.default_center?.[1] ?? defaults.mapCenterLng,
       defaultZoom: map.default_zoom ?? defaults.defaultZoom,
+      hideMapPoiMarkers: map.hide_poi_markers ?? defaults.hideMapPoiMarkers,
     };
   } catch {
     return defaults;
@@ -112,7 +115,8 @@ export async function updateSystemSettingsAction(
     if (
       updates.mapCenterLat !== undefined ||
       updates.mapCenterLng !== undefined ||
-      updates.defaultZoom !== undefined
+      updates.defaultZoom !== undefined ||
+      updates.hideMapPoiMarkers !== undefined
     ) {
       const { data: currMap } = await admin
         .from("application_settings")
@@ -128,6 +132,7 @@ export async function updateSystemSettingsAction(
           updates.mapCenterLng ?? existingMapVal.default_center?.[1] ?? 124.0326,
         ],
         default_zoom: updates.defaultZoom ?? existingMapVal.default_zoom ?? 13,
+        hide_poi_markers: updates.hideMapPoiMarkers ?? existingMapVal.hide_poi_markers ?? false,
       };
 
       await admin.from("application_settings").upsert(
@@ -141,14 +146,59 @@ export async function updateSystemSettingsAction(
     }
 
     await logAdminAction("UPDATE_APPLICATION_SETTINGS", "application_settings", "settings", updates);
-    revalidatePath("/admin/settings");
-    revalidatePath("/home");
-    revalidatePath("/more");
-    revalidatePath("/about");
+    try {
+      revalidatePath("/admin/settings");
+      revalidatePath("/home");
+      revalidatePath("/more");
+      revalidatePath("/about");
+      revalidatePath("/map");
+    } catch {
+      // safe fallback outside request store
+    }
 
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message || "Failed to update settings" };
+  }
+}
+
+export async function updateMapPoiMarkersAction(
+  hideMapPoiMarkers: boolean
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) {
+    return { success: true };
+  }
+
+  try {
+    const admin = createAdminClient();
+    const { data: currMap } = await admin
+      .from("application_settings")
+      .select("value")
+      .eq("key", "map")
+      .single();
+
+    const existingMapVal = (currMap?.value as any) || {};
+    const nextMapVal = {
+      ...existingMapVal,
+      hide_poi_markers: hideMapPoiMarkers,
+    };
+
+    const { error } = await admin.from("application_settings").upsert(
+      {
+        key: "map",
+        value: nextMapVal,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" }
+    );
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to update POI visibility" };
   }
 }
 

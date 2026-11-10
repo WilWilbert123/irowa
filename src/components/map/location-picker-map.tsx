@@ -17,6 +17,7 @@ import {
   ChevronRight 
 } from "lucide-react";
 import { useGeolocation } from "@/hooks/use-geolocation";
+import { useSystemSettings } from "@/hooks/use-system-settings";
 import { IROSIN_BARANGAYS_DATA, BarangayLocation } from "@/components/map/map-search-bar";
 
 interface LocationPickerMapProps {
@@ -40,12 +41,27 @@ const TILE_LAYERS = {
   },
   satellite: {
     name: "Satellite",
-    url: "https://mt{s}.google.com/vt/lyrs=y&apistyle=s.e:l.i|p.v:off,s.t:33|p.v:off&x={x}&y={y}&z={z}",
+    url: "https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
     attribution: "&copy; Google Maps",
     subdomains: ["0", "1", "2", "3"],
     maxNativeZoom: 20,
   },
 };
+
+function getPickerTileConfig(layer: "standard" | "satellite", hidePoiMarkers?: boolean) {
+  if (layer === "satellite") {
+    return {
+      name: "Satellite",
+      url: hidePoiMarkers
+        ? "https://mt{s}.google.com/vt/lyrs=y&apistyle=s.e:l.i|p.v:off,s.t:2|p.v:off&x={x}&y={y}&z={z}"
+        : "https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+      attribution: "&copy; Google Maps",
+      subdomains: ["0", "1", "2", "3"],
+      maxNativeZoom: 20,
+    };
+  }
+  return TILE_LAYERS.standard;
+}
 
 /**
  * Calculates the nearest Irosin barangay and returns both badge display label and clean barangay name.
@@ -90,6 +106,7 @@ export default function LocationPickerMap({
   markerIconId,
   markerColor,
 }: LocationPickerMapProps) {
+  const { settings: sysSettings } = useSystemSettings();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
@@ -236,7 +253,7 @@ export default function LocationPickerMap({
       attributionControl: false,
     });
 
-    const config = TILE_LAYERS[activeLayer];
+    const config = getPickerTileConfig(activeLayer, sysSettings?.hideMapPoiMarkers);
     const tileLayer = L.tileLayer(config.url, {
       attribution: config.attribution,
       maxNativeZoom: config.maxNativeZoom,
@@ -336,7 +353,7 @@ export default function LocationPickerMap({
     const map = mapInstanceRef.current;
     if (!map) return;
     const nextLayer = activeLayer === "satellite" ? "standard" : "satellite";
-    const config = TILE_LAYERS[nextLayer];
+    const config = getPickerTileConfig(nextLayer, sysSettings?.hideMapPoiMarkers);
 
     if (tileLayerRef.current) {
       try {
@@ -358,6 +375,14 @@ export default function LocationPickerMap({
     tileLayerRef.current = newTile;
     setActiveLayer(nextLayer);
   };
+
+  // Live reactivity when admin toggles POI balloon marker visibility
+  useEffect(() => {
+    if (activeLayer === "satellite" && tileLayerRef.current) {
+      const config = getPickerTileConfig("satellite", sysSettings?.hideMapPoiMarkers);
+      tileLayerRef.current.setUrl(config.url);
+    }
+  }, [sysSettings?.hideMapPoiMarkers, activeLayer]);
 
   // 4. Center on user GPS
   const handleLocateMe = async () => {

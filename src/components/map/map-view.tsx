@@ -31,7 +31,14 @@ interface MapViewProps {
   className?: string;
   isEditorMode?: boolean;
   onMapClickCoordinates?: (lat: number, lng: number) => void;
-  editorMarker?: { lat: number; lng: number } | null;
+  editorMarker?: {
+    lat: number;
+    lng: number;
+    iconId?: string;
+    color?: string;
+    category?: string;
+    status?: string;
+  } | null;
 }
 
 const TILE_LAYERS = {
@@ -41,7 +48,7 @@ const TILE_LAYERS = {
     maxNativeZoom: 18,
   },
   satellite: {
-    url: "https://mt{s}.google.com/vt/lyrs=y&apistyle=s.e:l.i|p.v:off,s.t:33|p.v:off&x={x}&y={y}&z={z}",
+    url: "https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
     attribution: "&copy; Google Maps",
     subdomains: ["0", "1", "2", "3"],
     maxNativeZoom: 20,
@@ -53,6 +60,20 @@ const TILE_LAYERS = {
     maxNativeZoom: 16,
   },
 };
+
+function getMapTileConfig(layer: "standard" | "satellite" | "terrain", hidePoiMarkers?: boolean) {
+  if (layer === "satellite") {
+    return {
+      url: hidePoiMarkers
+        ? "https://mt{s}.google.com/vt/lyrs=y&apistyle=s.e:l.i|p.v:off,s.t:2|p.v:off&x={x}&y={y}&z={z}"
+        : "https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+      attribution: "&copy; Google Maps",
+      subdomains: ["0", "1", "2", "3"],
+      maxNativeZoom: 20,
+    };
+  }
+  return TILE_LAYERS[layer] || TILE_LAYERS.standard;
+}
 
 export function MapView({
   sources,
@@ -146,7 +167,7 @@ export function MapView({
       attributionControl: false,
     });
 
-    const config = TILE_LAYERS[currentLayer] || TILE_LAYERS.satellite;
+    const config = getMapTileConfig(currentLayer, sysSettings?.hideMapPoiMarkers);
     const tileLayer = L.tileLayer(config.url, {
       attribution: config.attribution,
       maxNativeZoom: config.maxNativeZoom,
@@ -205,11 +226,11 @@ export function MapView({
     };
   }, []);
 
-  // 2. Tile layer updates
+  // 2. Tile layer updates (reacts to user layer toggle and admin POI hide/show setting)
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
-    const config = TILE_LAYERS[currentLayer] || TILE_LAYERS.satellite;
+    const config = getMapTileConfig(currentLayer, sysSettings?.hideMapPoiMarkers);
 
     if (tileLayerRef.current) {
       try {
@@ -229,7 +250,7 @@ export function MapView({
     }).addTo(map);
 
     tileLayerRef.current = tileLayer;
-  }, [currentLayer]);
+  }, [currentLayer, sysSettings?.hideMapPoiMarkers]);
 
   // 3. Render and sync water source markers (pins have NO text)
   useEffect(() => {
@@ -306,11 +327,29 @@ export function MapView({
 
     if (editorMarker) {
       const marker = L.marker([editorMarker.lat, editorMarker.lng], {
-        icon: createCategoryDivIcon("Other", true, "Available"),
+        icon: createCategoryDivIcon(
+          editorMarker.category || "Public Water Source",
+          true,
+          editorMarker.status || "Available",
+          editorMarker.iconId,
+          editorMarker.color
+        ),
+        draggable: true,
       }).addTo(map);
+
+      marker.on("dragend", (e: any) => {
+        const pos = e.target.getLatLng();
+        if (onMapClickCoordinates) {
+          onMapClickCoordinates(
+            Number(pos.lat.toFixed(5)),
+            Number(pos.lng.toFixed(5))
+          );
+        }
+      });
+
       editorMarkerRef.current = marker;
     }
-  }, [editorMarker]);
+  }, [editorMarker, onMapClickCoordinates]);
 
   // 6. Active route polylines
   useEffect(() => {
