@@ -9,9 +9,16 @@ import { MAP_CONFIG } from "@/lib/map/map-config";
 import { 
   createCategoryDivIcon, 
   createLocationMarkerIcon, 
-  createStartLocationIcon 
+  createStartLocationIcon,
+  createNavLocationIcon,
 } from "@/lib/map/map-icons";
-import { InAppRoute, fetchInAppRoute } from "@/lib/map/map-utils";
+import { 
+  InAppRoute, 
+  fetchInAppRoute, 
+  TravelMode, 
+  calculateDistanceKm, 
+  computeModeDurations 
+} from "@/lib/map/map-utils";
 import { MapCategoryFilter } from "./map-category-filter";
 import { MapSearchBar, IROSIN_BARANGAYS_DATA } from "./map-search-bar";
 import { MapControls } from "./map-controls";
@@ -88,7 +95,7 @@ export function MapView({
 }: MapViewProps) {
   const isMobile = useIsMobile();
   const { preferences, updatePreferences } = useVisitor();
-  const { location, isLocating, requestLocation } = useGeolocation();
+  const { location, isLocating, isWatching, requestLocation, startWatching, stopWatching } = useGeolocation();
   const { settings: sysSettings } = useSystemSettings();
   const mapCenter: [number, number] = [
     sysSettings.mapCenterLat || MAP_CONFIG.center[0],
@@ -99,6 +106,7 @@ export function MapView({
     preferences?.mapStyle || "satellite"
   );
   const [activeRoute, setActiveRoute] = useState<InAppRoute | null>(null);
+  const [travelMode, setTravelMode] = useState<TravelMode>("motorcycle");
   const [isRouting, setIsRouting] = useState(false);
 
   // Direct Leaflet refs
@@ -289,27 +297,83 @@ export function MapView({
     });
   }, [visibleSources, selectedSource, onSelectSource]);
 
-  // 4. User location marker
+  // 4a. Live continuous GPS tracking during active navigation
+  useEffect(() => {
+    if (activeRoute) {
+      startWatching();
+    } else {
+      stopWatching();
+    }
+    return () => {
+      stopWatching();
+    };
+  }, [activeRoute, startWatching, stopWatching]);
+
+  // 4b. User location marker (realtime moving GPS marker during directions, static pulse otherwise)
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    if (userMarkerRef.current) {
-      try {
-        map.removeLayer(userMarkerRef.current);
-      } catch {
-        // ignore
+    if (!location) {
+      if (userMarkerRef.current) {
+        try {
+          map.removeLayer(userMarkerRef.current);
+        } catch {
+          // ignore
+        }
+        userMarkerRef.current = null;
       }
-      userMarkerRef.current = null;
+      return;
     }
 
-    if (location && !activeRoute) {
-      const marker = L.marker([location.lat, location.lng], {
-        icon: createLocationMarkerIcon(),
-      }).addTo(map);
-      userMarkerRef.current = marker;
+    if (activeRoute) {
+      // Realtime moving navigation marker
+      if (userMarkerRef.current) {
+        userMarkerRef.current.setLatLng([location.lat, location.lng]);
+        userMarkerRef.current.setIcon(createNavLocationIcon(travelMode));
+      } else {
+        const marker = L.marker([location.lat, location.lng], {
+          icon: createNavLocationIcon(travelMode),
+          zIndexOffset: 1000,
+        }).addTo(map);
+        userMarkerRef.current = marker;
+      }
+
+      // Live recalculation of remaining distance & durations as the user moves
+      if (activeRoute.destinationLat && activeRoute.destinationLng) {
+        const remDist = calculateDistanceKm(
+          location.lat,
+          location.lng,
+          activeRoute.destinationLat,
+          activeRoute.destinationLng
+        );
+        const newDurations = computeModeDurations(remDist, activeRoute.offRoadDistanceKm || 0);
+
+        setActiveRoute((prev) => {
+          if (!prev) return null;
+          // Avoid unnecessary re-renders if distance hasn't noticeably changed (< 10 meters)
+          if (Math.abs(prev.distanceKm - remDist) < 0.01) return prev;
+          return {
+            ...prev,
+            distanceKm: remDist,
+            modeDurations: newDurations,
+            durationMinutes: newDurations[prev.travelMode || travelMode],
+          };
+        });
+      }
+    } else {
+      // Standard static/pulsing user location marker
+      if (userMarkerRef.current) {
+        userMarkerRef.current.setLatLng([location.lat, location.lng]);
+        userMarkerRef.current.setIcon(createLocationMarkerIcon());
+      } else {
+        const marker = L.marker([location.lat, location.lng], {
+          icon: createLocationMarkerIcon(),
+        }).addTo(map);
+        userMarkerRef.current = marker;
+      }
     }
-  }, [location, activeRoute]);
+  }, [location, activeRoute, travelMode]);
 
   // 5. Admin editor marker
   useEffect(() => {
@@ -487,6 +551,33 @@ export function MapView({
     }
   };
 
+  const handleModeChange = (newMode: TravelMode) => {
+    setTravelMode(newMode);
+    if (activeRoute) {
+      setActiveRoute((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          travelMode: newMode,
+          durationMinutes: prev.modeDurations[newMode],
+        };
+      });
+      if (userMarkerRef.current) {
+        userMarkerRef.current.setIcon(createNavLocationIcon(newMode));
+      }
+    }
+  };
+
+  const handleRecenterNav = () => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    if (location) {
+      map.flyTo([location.lat, location.lng], 16, { duration: 0.8 });
+    } else if (activeRoute?.coordinates?.[0]) {
+      map.flyTo(activeRoute.coordinates[0], 16, { duration: 0.8 });
+    }
+  };
+
   const handleGetDirections = async (source: WaterSourceWithPhotos) => {
     setIsRouting(true);
     onSelectSource(null); // dismiss card to show route
@@ -511,7 +602,8 @@ export function MapView({
         source.latitude,
         source.longitude,
         originName,
-        source.name
+        source.name,
+        travelMode
       );
 
       setActiveRoute(route);
@@ -570,8 +662,15 @@ export function MapView({
       {activeRoute && (
         <DirectionsPanel
           route={activeRoute}
-          onClose={() => setActiveRoute(null)}
+          onClose={() => {
+            setActiveRoute(null);
+            stopWatching();
+          }}
           isMobile={isMobile}
+          currentMode={travelMode}
+          onModeChange={handleModeChange}
+          onRecenter={handleRecenterNav}
+          isTrackingLive={isWatching || !!location}
         />
       )}
 

@@ -10,8 +10,10 @@ import { getDefaultCircleIconForCategory } from "../map/circle-icons";
 let customIconsCache: Record<string, { iconId: string; color?: string }> | null = null;
 let lastIconsCacheTime = 0;
 
+const getMonotonicTime = () => (typeof performance !== "undefined" ? performance.now() : 0);
+
 export async function getWaterSourceCustomIcons(): Promise<Record<string, { iconId: string; color?: string }>> {
-  const now = Date.now();
+  const now = getMonotonicTime();
   if (customIconsCache && now - lastIconsCacheTime < 10000) {
     return customIconsCache;
   }
@@ -49,7 +51,7 @@ export async function saveWaterSourceCustomIcon(
 
   if (!customIconsCache) customIconsCache = {};
   customIconsCache[waterSourceId] = { iconId, color };
-  lastIconsCacheTime = Date.now();
+  lastIconsCacheTime = getMonotonicTime();
 
   if (!isSupabaseConfigured()) {
     return true;
@@ -93,7 +95,7 @@ let categoryOverridesCache: Record<string, string> | null = null;
 let lastCategoryOverridesTime = 0;
 
 export async function getWaterSourceCategoryOverrides(): Promise<Record<string, string>> {
-  const now = Date.now();
+  const now = getMonotonicTime();
   if (categoryOverridesCache && now - lastCategoryOverridesTime < 10000) {
     return categoryOverridesCache;
   }
@@ -128,7 +130,7 @@ export async function saveWaterSourceCategoryOverride(
   if (!waterSourceId || !category) return false;
   if (!categoryOverridesCache) categoryOverridesCache = {};
   categoryOverridesCache[waterSourceId] = category;
-  lastCategoryOverridesTime = Date.now();
+  lastCategoryOverridesTime = getMonotonicTime();
 
   if (!isSupabaseConfigured()) return true;
 
