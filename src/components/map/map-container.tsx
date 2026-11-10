@@ -29,7 +29,14 @@ interface MapContainerProps {
   className?: string;
   isEditorMode?: boolean;
   onMapClickCoordinates?: (lat: number, lng: number) => void;
-  editorMarker?: { lat: number; lng: number } | null;
+  editorMarker?: {
+    lat: number;
+    lng: number;
+    iconId?: string;
+    color?: string;
+    category?: string;
+    status?: string;
+  } | null;
 }
 
 export function MapContainer(props: MapContainerProps) {

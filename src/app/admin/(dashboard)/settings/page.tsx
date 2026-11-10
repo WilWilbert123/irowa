@@ -31,6 +31,7 @@ import { useAdminRealtime } from "@/hooks/use-admin-realtime";
 import {
   getSystemSettingsAction,
   updateSystemSettingsAction,
+  updateMapPoiMarkersAction,
   getDatabaseTablesAction,
   clearDatabaseTableAction,
   SystemSettingsData,
@@ -38,6 +39,7 @@ import {
 } from "@/actions/settings-actions";
 import { cn } from "@/lib/utils";
 import { getAdminCache, setAdminCache, ADMIN_CACHE_KEYS } from "@/lib/cache/admin-cache";
+import { updateCachedSettings, broadcastSystemSettingsUpdate } from "@/hooks/use-system-settings";
 
 // Dynamically load LocationPickerMap without SSR for Leaflet compatibility
 const LocationPickerMap = dynamic(
@@ -67,6 +69,7 @@ export default function AdminSettingsPage() {
       mapCenterLat: 12.7042,
       mapCenterLng: 124.0326,
       defaultZoom: 13,
+      hideMapPoiMarkers: false,
     }
   );
 
@@ -80,13 +83,63 @@ export default function AdminSettingsPage() {
   const [isClearing, setIsClearing] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // Instant POI Marker Toggle State
+  const [isTogglingPoi, setIsTogglingPoi] = useState(false);
+  const [poiSavedNotice, setPoiSavedNotice] = useState(false);
+
+  const areMarkersEnabled = !settings.hideMapPoiMarkers;
+
+  const handleTogglePoi = async () => {
+    // If currently enabled, next is disabled (hideMapPoiMarkers = true)
+    // If currently disabled, next is enabled (hideMapPoiMarkers = false)
+    const nextHidePoiMarkers = areMarkersEnabled;
+
+    // 1. Instant 0ms optimistic update & websocket broadcast to all users
+    setSettings((prev) => ({ ...prev, hideMapPoiMarkers: nextHidePoiMarkers }));
+    broadcastSystemSettingsUpdate({ hideMapPoiMarkers: nextHidePoiMarkers });
+    setAdminCache(ADMIN_CACHE_KEYS.SETTINGS, {
+      ...settings,
+      hideMapPoiMarkers: nextHidePoiMarkers,
+    });
+
+    setIsTogglingPoi(true);
+    setPoiSavedNotice(true);
+
+    try {
+      // 2. Direct fast server action to Supabase without blocking UI
+      const res = await updateMapPoiMarkersAction(nextHidePoiMarkers);
+      if (!res.success) {
+        // Rollback on failure
+        setSettings((prev) => ({ ...prev, hideMapPoiMarkers: !nextHidePoiMarkers }));
+        broadcastSystemSettingsUpdate({ hideMapPoiMarkers: !nextHidePoiMarkers });
+        setFeedback({
+          type: "error",
+          text: res.error || "Failed to update marker visibility setting.",
+        });
+      }
+    } catch (err: any) {
+      setSettings((prev) => ({ ...prev, hideMapPoiMarkers: !nextHidePoiMarkers }));
+      broadcastSystemSettingsUpdate({ hideMapPoiMarkers: !nextHidePoiMarkers });
+      setFeedback({
+        type: "error",
+        text: err.message || "Failed to update marker visibility setting.",
+      });
+    } finally {
+      setIsTogglingPoi(false);
+      setTimeout(() => setPoiSavedNotice(false), 2500);
+    }
+  };
+
   const loadData = useCallback(async () => {
     try {
       const [settingsData, tablesData] = await Promise.all([
         getSystemSettingsAction(),
         getDatabaseTablesAction(),
       ]);
-      setSettings(settingsData);
+      setSettings((curr) => {
+        if (saving || isTogglingPoi) return curr;
+        return settingsData;
+      });
       setTables(tablesData);
       setAdminCache(ADMIN_CACHE_KEYS.SETTINGS, settingsData);
     } catch (err) {
@@ -94,7 +147,7 @@ export default function AdminSettingsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [saving, isTogglingPoi]);
 
   const { isLive, lastSync, isRefreshing, triggerRefresh } = useAdminRealtime({
     tables: ["application_settings", "audit_logs", "chat_messages", "visitor_sessions"],
@@ -113,6 +166,7 @@ export default function AdminSettingsPage() {
     try {
       const res = await updateSystemSettingsAction(settings);
       if (res.success) {
+        broadcastSystemSettingsUpdate(settings);
         setSavedSuccess(true);
         setAdminCache(ADMIN_CACHE_KEYS.SETTINGS, settings);
         setFeedback({
@@ -368,6 +422,58 @@ export default function AdminSettingsPage() {
                     required
                   />
                 </div>
+              </div>
+
+              {/* Satellite Third-Party POI Balloon Marker Visibility Toggle */}
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">
+                      Satellite Map Third-Party Balloon Markers
+                    </span>
+                    <span
+                      className={cn(
+                        "text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors",
+                        areMarkersEnabled
+                          ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-900/40"
+                          : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900/40"
+                      )}
+                    >
+                      {areMarkersEnabled ? "Enabled (Show Pins)" : "Disabled (Clean View)"}
+                    </span>
+                    {poiSavedNotice && (
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 animate-in fade-in duration-150">
+                        <Check className="w-3 h-3 text-emerald-500" />
+                        Saved (Realtime)
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {areMarkersEnabled
+                      ? "Default mode active: Standard Google satellite hybrid points of interest and balloon pins are displayed."
+                      : "Clean mode active: Third-party commercial balloon markers are hidden to keep community water sources prominent. Roads, rivers, and barangays stay clean."}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleTogglePoi}
+                  disabled={isTogglingPoi}
+                  className={cn(
+                    "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden disabled:opacity-75",
+                    areMarkersEnabled ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-700"
+                  )}
+                  title={areMarkersEnabled ? "Click to disable balloon pins (Clean View)" : "Click to enable balloon pins"}
+                >
+                  <span
+                    className={cn(
+                      "pointer-events-none inline-flex items-center justify-center h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out",
+                      areMarkersEnabled ? "translate-x-5" : "translate-x-0"
+                    )}
+                  >
+                    {isTogglingPoi && <Loader2 className="w-2.5 h-2.5 text-blue-600 animate-spin" />}
+                  </span>
+                </button>
               </div>
             </div>
 

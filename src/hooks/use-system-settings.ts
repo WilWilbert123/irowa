@@ -14,15 +14,90 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettingsData = {
   mapCenterLat: 12.7042,
   mapCenterLng: 124.0326,
   defaultZoom: 13,
+  hideMapPoiMarkers: false,
 };
 
-// Global in-memory cache for instant 0ms access across client pages
+// Global in-memory cache and subscriber management for 0ms shared state
 let cachedSettings: SystemSettingsData | null = null;
 const listeners = new Set<(settings: SystemSettingsData) => void>();
+const SHARED_SETTINGS_CHANNEL = "system_settings_realtime";
+let activeChannel: any = null;
 
 function notifyListeners(next: SystemSettingsData) {
   cachedSettings = next;
   listeners.forEach((listener) => listener(next));
+}
+
+export function updateCachedSettings(updates: Partial<SystemSettingsData>) {
+  const current = cachedSettings || DEFAULT_SYSTEM_SETTINGS;
+  const updated = { ...current, ...updates };
+  notifyListeners(updated);
+}
+
+export function broadcastSystemSettingsUpdate(updates: Partial<SystemSettingsData>) {
+  updateCachedSettings(updates);
+  if (activeChannel) {
+    try {
+      activeChannel.send({
+        type: "broadcast",
+        event: "settings_updated",
+        payload: updates,
+      });
+    } catch {
+      // safe fallback
+    }
+  }
+}
+
+function ensureRealtimeSubscription() {
+  if (!isSupabaseConfigured() || activeChannel) return;
+
+  try {
+    const supabase = createClient();
+    const channel = supabase.channel(SHARED_SETTINGS_CHANNEL, {
+      config: { broadcast: { self: false } },
+    });
+
+    channel
+      .on("broadcast", { event: "settings_updated" }, (payload: any) => {
+        if (payload?.payload) {
+          updateCachedSettings(payload.payload);
+        }
+      })
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "application_settings",
+        },
+        async () => {
+          try {
+            const fresh = await getSystemSettingsAction();
+            notifyListeners(fresh);
+          } catch (err) {
+            console.warn("Failed to refresh system settings on realtime event:", err);
+          }
+        }
+      )
+      .subscribe();
+
+    activeChannel = channel;
+  } catch (err) {
+    console.warn("Could not initialize system settings realtime channel:", err);
+  }
+}
+
+function cleanupRealtimeSubscription() {
+  if (activeChannel && listeners.size === 0) {
+    try {
+      const supabase = createClient();
+      supabase.removeChannel(activeChannel);
+    } catch {
+      // safe fallback
+    }
+    activeChannel = null;
+  }
 }
 
 export function useSystemSettings() {
@@ -45,7 +120,7 @@ export function useSystemSettings() {
   useEffect(() => {
     let isMounted = true;
 
-    // 1. Subscribe to local shared state changes
+    // 1. Subscribe component to shared in-memory settings
     const listener = (newSettings: SystemSettingsData) => {
       if (!isMounted) return;
       setSettings(newSettings);
@@ -53,49 +128,18 @@ export function useSystemSettings() {
     };
     listeners.add(listener);
 
-    // 2. Fetch fresh settings on mount
+    // 2. Initial fetch
     fetchSettings();
 
-    // 3. Realtime subscription to postgres_changes on "application_settings"
-    if (!isSupabaseConfigured()) {
-      return () => {
-        isMounted = false;
-        listeners.delete(listener);
-      };
-    }
-
-    const supabase = createClient();
-    const channelName = `realtime_system_settings_${Math.random().toString(36).substring(7)}`;
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "application_settings",
-        },
-        async () => {
-          // Immediately re-fetch settings from server action to ensure full mapping & integrity
-          try {
-            const fresh = await getSystemSettingsAction();
-            if (isMounted) {
-              notifyListeners(fresh);
-            }
-          } catch (err) {
-            console.warn("Failed to refresh system settings on realtime event:", err);
-          }
-        }
-      )
-      .subscribe();
+    // 3. Ensure single shared realtime channel is active
+    ensureRealtimeSubscription();
 
     return () => {
       isMounted = false;
       listeners.delete(listener);
-      supabase.removeChannel(channel);
+      cleanupRealtimeSubscription();
     };
   }, [fetchSettings]);
 
   return { settings, loading, refresh: fetchSettings };
 }
-
