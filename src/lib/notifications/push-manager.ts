@@ -4,7 +4,7 @@ import { requestNotificationPermission } from "./notification-permissions";
 import { createClient } from "../supabase/client";
 
 /**
- * Safely retrieves or registers the service worker without hanging indefinitely.
+ * Safely retrieves or registers the service worker without hanging indefinitely.  
  */
 export async function getOrRegisterServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
@@ -108,7 +108,7 @@ export async function unsubscribeFromPushNotifications(): Promise<boolean> {
       try {
         const supabase = createClient();
         await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
-      } catch {}
+      } catch { }
       return true;
     }
     return true;
