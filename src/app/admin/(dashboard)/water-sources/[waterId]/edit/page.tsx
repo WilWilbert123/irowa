@@ -444,7 +444,7 @@ export default function EditWaterSourcePage() {
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                  className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none dark:[&>option]:bg-slate-900 dark:[&>option]:text-slate-100"
                   required
                 >
                   {waterCategories.map((c) => (
@@ -460,7 +460,7 @@ export default function EditWaterSourcePage() {
                 <select
                   value={barangay}
                   onChange={(e) => setBarangay(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                  className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none dark:[&>option]:bg-slate-900 dark:[&>option]:text-slate-100"
                   required
                 >
                   {IROSIN_BARANGAYS.map((b) => (
@@ -756,7 +756,7 @@ export default function EditWaterSourcePage() {
               <select
                 value={availabilityStatus}
                 onChange={(e) => setAvailabilityStatus(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none dark:[&>option]:bg-slate-900 dark:[&>option]:text-slate-100"
               >
                 {waterAvailabilityStatuses.map((st) => (
                   <option key={st} value={st}>
@@ -771,7 +771,7 @@ export default function EditWaterSourcePage() {
               <select
                 value={verificationStatus}
                 onChange={(e) => setVerificationStatus(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none dark:[&>option]:bg-slate-900 dark:[&>option]:text-slate-100"
               >
                 {["Verified", "Unverified"].map((st) => (
                   <option key={st} value={st}>

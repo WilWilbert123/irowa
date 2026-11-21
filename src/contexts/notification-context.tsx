@@ -47,6 +47,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     loadData();
 
+    // Check if browser notification permission is already active on mount
+    if (typeof window !== "undefined") {
+      if ("Notification" in window && Notification.permission === "granted") {
+        setPushEnabled(true);
+      }
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
+      }
+    }
+
     // Setup Supabase Realtime subscription
     const supabase = createClient();
     const channel = supabase
@@ -80,14 +90,17 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const togglePushNotifications = async (): Promise<boolean> => {
     if (pushEnabled) {
-      const success = await unsubscribeFromPushNotifications();
-      if (success) setPushEnabled(false);
+      await unsubscribeFromPushNotifications();
+      setPushEnabled(false);
       return false;
     } else {
       const res = await subscribeToPushNotifications(visitor?.visitorId);
       if (res.success) {
         setPushEnabled(true);
         return true;
+      }
+      if (res.error) {
+        throw new Error(res.error);
       }
       return false;
     }

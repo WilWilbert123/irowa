@@ -45,6 +45,34 @@ body {
   border: none !important;
 }
 
+/* Fix native select & option dropdowns in Windows (Chrome, Edge, Firefox) under dark mode */
+select {
+  color-scheme: light;
+}
+
+.dark select,
+html.dark select,
+:root.dark select,
+body.dark select {
+  color-scheme: dark !important;
+}
+
+select option,
+select optgroup {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+.dark select option,
+.dark select optgroup,
+html.dark select option,
+html.dark select optgroup,
+:root.dark select option,
+:root.dark select optgroup {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+
 /* Hide default leaflet attribution */
 .leaflet-control-attribution {
   display: none !important;
