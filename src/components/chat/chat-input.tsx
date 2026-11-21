@@ -8,7 +8,12 @@ import { useOnlineStatus } from "@/hooks/use-online-status";
 import { Dialog, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface ChatInputProps {
-  onSendMessage: (message: string) => Promise<{ success: boolean; error?: string }>;
+  onSendMessage: (message: string) => Promise<{
+    success: boolean;
+    error?: string;
+    isFlagged?: boolean;
+    moderationReason?: string | null;
+  }>;
   disabled?: boolean;
 }
 
@@ -20,6 +25,7 @@ export function ChatInput({ onSendMessage, disabled }: ChatInputProps) {
   const [namePromptOpen, setNamePromptOpen] = useState(false);
   const [tempName, setTempName] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [flaggedNotice, setFlaggedNotice] = useState<string | null>(null);
 
   const hasName = Boolean(visitor?.displayName && visitor.displayName.trim().length >= 2);
 
@@ -34,10 +40,17 @@ export function ChatInput({ onSendMessage, disabled }: ChatInputProps) {
 
     setIsSubmitting(true);
     setErrorMsg(null);
+    setFlaggedNotice(null);
     try {
       const res = await onSendMessage(text.trim());
       if (res.success) {
         setText("");
+        if (res.isFlagged) {
+          setFlaggedNotice(
+            "Your message was held for moderator review because it contains an external link or flagged keyword."
+          );
+          setTimeout(() => setFlaggedNotice(null), 6000);
+        }
       } else {
         setErrorMsg(res.error || "Failed to deliver message");
       }
@@ -73,6 +86,12 @@ export function ChatInput({ onSendMessage, disabled }: ChatInputProps) {
         {errorMsg && (
           <div className="mb-2 text-xs text-rose-600 dark:text-rose-400 font-medium px-2">
             {errorMsg}
+          </div>
+        )}
+
+        {flaggedNotice && (
+          <div className="mb-2 py-1.5 px-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/50 text-[11px] text-amber-800 dark:text-amber-300 font-medium">
+            {flaggedNotice}
           </div>
         )}
 

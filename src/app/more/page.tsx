@@ -16,13 +16,17 @@ import {
   Heart,
   Droplets,
   ExternalLink,
+  Flame,
+  Siren,
+  HeartPulse,
+  Radio,
 } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { Sidebar } from "@/components/layout/sidebar";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { useVisitor } from "@/contexts/visitor-context";
 import { useNotifications } from "@/contexts/notification-context";
-import { useSystemSettings } from "@/hooks/use-system-settings";
+import { useSystemSettings, DEFAULT_EMERGENCY_CONTACTS } from "@/hooks/use-system-settings";
 import { useLanguage } from "@/contexts/language-context";
 
 export default function MorePage() {
@@ -156,34 +160,127 @@ export default function MorePage() {
             </Link>
           </div>
 
-          {/* Emergency Hotline Card */}
-          <div className="p-4 rounded-2xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
-            <div className="flex items-start gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <PhoneCall className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white">
-                    {t.more.hotlineTitle}
-                  </h4>
-                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-200">
-                    {t.more.hotlineBadge}
-                  </span>
+          {/* Emergency Hotlines Directory Card */}
+          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden">
+            {/* Directory Header */}
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/40 flex items-center justify-center shrink-0">
+                  <PhoneCall className="h-4 w-4" />
                 </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5 leading-snug">
-                  {t.more.hotlineDesc}
-                </p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white leading-tight">
+                      Irosin Emergency Hotlines
+                    </h4>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/50">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      {t.more.hotlineBadge}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                    Tap any number to call directly for water relief &amp; emergency response
+                  </p>
+                </div>
               </div>
             </div>
 
-            <a
-              href={`tel:${cleanHotline}`}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold text-xs shadow-xs transition-transform cursor-pointer w-full sm:w-auto shrink-0 select-none"
-            >
-              <PhoneCall className="h-3.5 w-3.5" />
-              <span>{t.more.callBtn} {settings.emergencyHotline || "0917-123-4567"}</span>
-            </a>
+            {/* Balanced 3-Column Grid (2 rows x 3 columns) */}
+            <div className="p-2.5 sm:p-3.5 grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5 bg-slate-50/40 dark:bg-slate-950/20">
+              {(settings.emergencyContacts && settings.emergencyContacts.length > 0
+                ? settings.emergencyContacts
+                : DEFAULT_EMERGENCY_CONTACTS
+              ).map((contact, idx) => {
+                const nameUpper = contact.agency.toUpperCase();
+                const isNational = nameUpper.includes("911") || nameUpper.includes("NATIONAL");
+                const isBfp = nameUpper.includes("BFP") || nameUpper.includes("FIRE");
+                const isPnp = nameUpper.includes("PNP") || nameUpper.includes("POLICE");
+                const isRhu = nameUpper.includes("RHU") || nameUpper.includes("HEALTH");
+
+                const iconConfig = isNational
+                  ? {
+                      icon: <Siren className="h-3.5 w-3.5" />,
+                      style: "bg-rose-50 text-rose-600 border-rose-200/60 dark:bg-rose-950/50 dark:text-rose-400 dark:border-rose-900/40",
+                      shortLabel: "National 911",
+                      subtitle: "Emergency Hotline",
+                    }
+                  : isBfp
+                  ? {
+                      icon: <Flame className="h-3.5 w-3.5" />,
+                      style: "bg-orange-50 text-orange-600 border-orange-200/60 dark:bg-orange-950/50 dark:text-orange-400 dark:border-orange-900/40",
+                      shortLabel: contact.agency,
+                      subtitle: "Fire Protection",
+                    }
+                  : isPnp
+                  ? {
+                      icon: <Shield className="h-3.5 w-3.5" />,
+                      style: "bg-blue-50 text-blue-600 border-blue-200/60 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-900/40",
+                      shortLabel: contact.agency,
+                      subtitle: "Police Station",
+                    }
+                  : isRhu
+                  ? {
+                      icon: <HeartPulse className="h-3.5 w-3.5" />,
+                      style: "bg-emerald-50 text-emerald-600 border-emerald-200/60 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-900/40",
+                      shortLabel: contact.agency,
+                      subtitle: "Rural Health Unit",
+                    }
+                  : {
+                      icon: <Radio className="h-3.5 w-3.5" />,
+                      style: "bg-amber-50 text-amber-600 border-amber-200/60 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-900/40",
+                      shortLabel: nameUpper.includes("SPDRRMO") ? "SPDRRMO" : contact.agency,
+                      subtitle: nameUpper.includes("SPDRRMO")
+                        ? "Irosin Extension"
+                        : "Disaster & Water",
+                    };
+
+                const validNumbers = contact.numbers.filter((n) => n && n.trim().length > 0);
+
+                return (
+                  <div
+                    key={contact.id || idx}
+                    className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col gap-2.5 hover:border-blue-500/40 transition-all"
+                  >
+                    {/* Card Header */}
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div
+                        className={`w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 ${iconConfig.style}`}
+                      >
+                        {iconConfig.icon}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <span
+                          className="text-xs font-extrabold text-slate-900 dark:text-white block leading-tight truncate"
+                          title={contact.agency}
+                        >
+                          {iconConfig.shortLabel}
+                        </span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 block leading-tight truncate mt-0.5">
+                          {iconConfig.subtitle}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Uniform Call Buttons Area */}
+                    <div className="flex-1 flex flex-col justify-center gap-1.5 w-full">
+                      {validNumbers.map((num, nIdx) => {
+                        const dialNum = num.replace(/[^\d+]/g, "");
+                        return (
+                          <a
+                            key={nIdx}
+                            href={`tel:${dialNum}`}
+                            className="w-full inline-flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-slate-50 hover:bg-blue-600 hover:text-white hover:border-blue-600 dark:bg-slate-800/90 dark:hover:bg-blue-600 text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700/80 font-mono font-bold text-[11px] active:scale-95 transition-all cursor-pointer select-none group/btn"
+                          >
+                            <PhoneCall className="h-3 w-3 shrink-0 text-blue-600 dark:text-blue-400 group-hover/btn:text-white transition-colors" />
+                            <span className="truncate">{num}</span>
+                          </a>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* Navigation Links List */}
