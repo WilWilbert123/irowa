@@ -8,7 +8,7 @@ import { BottomNav } from "@/components/layout/bottom-nav";
 import { useVisitor } from "@/contexts/visitor-context";
 import { useNotifications } from "@/contexts/notification-context";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { User, Smartphone, Moon, Shield, Info, Check } from "lucide-react";
+import { User, Smartphone, Moon, Shield, Info, Check, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 export default function ProfilePage() {
@@ -16,6 +16,19 @@ export default function ProfilePage() {
   const { pushEnabled, togglePushNotifications } = useNotifications();
   const [nameInput, setNameInput] = useState(visitor?.displayName || "");
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [isTogglingPush, setIsTogglingPush] = useState(false);
+
+  const handleTogglePush = async () => {
+    if (isTogglingPush) return;
+    setIsTogglingPush(true);
+    try {
+      await togglePushNotifications();
+    } catch (err: any) {
+      alert(err.message || "Failed to update notification settings");
+    } finally {
+      setIsTogglingPush(false);
+    }
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,14 +121,21 @@ export default function ProfilePage() {
                   <p className="text-xs text-slate-400">Receive alert updates on low supply in your barangay</p>
                 </div>
                 <button
-                  onClick={togglePushNotifications}
-                  className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer shrink-0 ${
+                  type="button"
+                  onClick={handleTogglePush}
+                  disabled={isTogglingPush}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold border transition-all duration-150 active:scale-95 touch-manipulation cursor-pointer shrink-0 select-none ${
                     pushEnabled
                       ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-                      : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100"
-                  }`}
+                      : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  } ${isTogglingPush ? "opacity-75 cursor-wait" : ""}`}
                 >
-                  {pushEnabled ? "Enabled" : "Enable"}
+                  {isTogglingPush ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
+                  ) : pushEnabled ? (
+                    <Check className="h-3.5 w-3.5 text-emerald-600" />
+                  ) : null}
+                  <span>{isTogglingPush ? "Updating..." : pushEnabled ? "Enabled" : "Enable"}</span>
                 </button>
               </div>
 

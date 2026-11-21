@@ -376,7 +376,7 @@ export default function AdminNewWaterSourcePage() {
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value as any)}
-                  className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                  className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none dark:[&>option]:bg-slate-900 dark:[&>option]:text-slate-100"
                   required
                 >
                   {waterCategories.map((c) => (
@@ -392,7 +392,7 @@ export default function AdminNewWaterSourcePage() {
                 <select
                   value={barangay}
                   onChange={(e) => setBarangay(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                  className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none dark:[&>option]:bg-slate-900 dark:[&>option]:text-slate-100"
                   required
                 >
                   {IROSIN_BARANGAYS.map((b) => (
@@ -631,7 +631,7 @@ export default function AdminNewWaterSourcePage() {
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as any)}
-                className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none dark:[&>option]:bg-slate-900 dark:[&>option]:text-slate-100"
               >
                 {waterAvailabilityStatuses.map((s) => (
                   <option key={s} value={s}>
