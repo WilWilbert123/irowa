@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { ChatMessageRow } from "@/types/chat";
-import { getChatMessages, sendChatMessage } from "@/lib/services/chat-service";
+import { getMessagesAction, sendChatMessageAction } from "@/actions/chat-actions";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { useVisitor } from "./visitor-context";
 
@@ -13,7 +13,12 @@ interface ChatContextType {
   error: string | null;
   activeWaterSourceId: string | null;
   setActiveWaterSourceId: (id: string | null) => void;
-  sendMessage: (text: string) => Promise<{ success: boolean; error?: string }>;
+  sendMessage: (text: string) => Promise<{
+    success: boolean;
+    error?: string;
+    isFlagged?: boolean;
+    moderationReason?: string | null;
+  }>;
   refreshMessages: () => Promise<void>;
 }
 
@@ -30,7 +35,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await getChatMessages(sourceId);
+      const data = await getMessagesAction(sourceId);
       setMessages(data);
     } catch (err: any) {
       setError(err.message || "Failed to load messages");
@@ -58,17 +63,29 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "chat_messages",
         },
         (payload: any) => {
-          const newMsg = payload.new as ChatMessageRow;
-          if (newMsg.status === "published") {
-            setMessages((prev) => {
-              if (prev.some((m) => m.id === newMsg.id)) return prev;
-              return [...prev, newMsg];
-            });
+          if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+            const newMsg = payload.new as ChatMessageRow;
+            if (newMsg.status === "published") {
+              setMessages((prev) => {
+                if (prev.some((m) => m.id === newMsg.id)) return prev;
+                return [...prev, newMsg].sort(
+                  (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                );
+              });
+            } else {
+              // If hidden, flagged, or deleted by admin, remove from public chat stream
+              setMessages((prev) => prev.filter((m) => m.id !== newMsg.id));
+            }
+          } else if (payload.eventType === "DELETE") {
+            const oldId = payload.old?.id;
+            if (oldId) {
+              setMessages((prev) => prev.filter((m) => m.id !== oldId));
+            }
           }
         }
       )
@@ -85,19 +102,26 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
     const displayName = visitor.displayName || "Resident";
 
-    const res = await sendChatMessage(
-      activeWaterSourceId,
-      visitor.visitorId,
-      displayName,
-      text
-    );
+    const res: any = await sendChatMessageAction({
+      water_source_id: activeWaterSourceId,
+      visitor_id: visitor.visitorId,
+      display_name: displayName,
+      message: text,
+    });
 
     if (res.success && res.data) {
-      setMessages((prev) => {
-        if (prev.some((m) => m.id === res.data?.id)) return prev;
-        return [...prev, res.data!];
-      });
-      return { success: true };
+      const isFlagged = res.data.status === "flagged";
+      if (!isFlagged) {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === res.data?.id)) return prev;
+          return [...prev, res.data!];
+        });
+      }
+      return {
+        success: true,
+        isFlagged,
+        moderationReason: res.data.moderation_reason,
+      };
     }
     return { success: false, error: res.error || "Failed to deliver message" };
   };

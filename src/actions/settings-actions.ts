@@ -6,10 +6,17 @@ import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { logAdminAction } from "@/lib/services/audit-service";
 import { revalidatePath } from "next/cache";
 
+export interface EmergencyContactAgency {
+  id: string;
+  agency: string;
+  numbers: string[];
+}
+
 export interface SystemSettingsData {
   appName: string;
   tagline: string;
   emergencyHotline: string;
+  emergencyContacts?: EmergencyContactAgency[];
   alertBannerEnabled: boolean;
   alertBannerText: string;
   mapCenterLat: number;
@@ -18,11 +25,45 @@ export interface SystemSettingsData {
   hideMapPoiMarkers?: boolean;
 }
 
+const DEFAULT_EMERGENCY_CONTACTS: EmergencyContactAgency[] = [
+  {
+    id: "national",
+    agency: "National Emergency Hotline",
+    numbers: ["911"],
+  },
+  {
+    id: "mdrrmo",
+    agency: "MDRRMO",
+    numbers: ["0919-831-4437", "0998-970-5574"],
+  },
+  {
+    id: "spdrrmo",
+    agency: "SPDRRMO Irosin Extension",
+    numbers: ["0951-227-5224"],
+  },
+  {
+    id: "pnp",
+    agency: "PNP",
+    numbers: ["0998-598-6071"],
+  },
+  {
+    id: "bfp",
+    agency: "BFP",
+    numbers: ["0951-899-8434", "0977-382-3114"],
+  },
+  {
+    id: "rhu",
+    agency: "RHU",
+    numbers: ["0930-3611-801"],
+  },
+];
+
 export async function getSystemSettingsAction(): Promise<SystemSettingsData> {
   const defaults: SystemSettingsData = {
     appName: "IroWa",
     tagline: "Irosin Water Resources Map",
-    emergencyHotline: "0917-123-4567",
+    emergencyHotline: "0919-831-4437",
+    emergencyContacts: DEFAULT_EMERGENCY_CONTACTS,
     alertBannerEnabled: true,
     alertBannerText: "Water Advisory: Regular conservation guidelines in effect for low-elevation barangays.",
     mapCenterLat: 12.7042,
@@ -51,10 +92,21 @@ export async function getSystemSettingsAction(): Promise<SystemSettingsData> {
     const general = settingsMap["general"] || {};
     const map = settingsMap["map"] || {};
 
+    const savedHotline =
+      general.emergency_hotline && general.emergency_hotline !== "0917-123-4567"
+        ? general.emergency_hotline
+        : defaults.emergencyHotline;
+
+    const savedContacts =
+      Array.isArray(general.emergency_contacts) && general.emergency_contacts.length > 0
+        ? general.emergency_contacts
+        : defaults.emergencyContacts;
+
     return {
       appName: general.app_name || defaults.appName,
       tagline: general.tagline || defaults.tagline,
-      emergencyHotline: general.emergency_hotline || defaults.emergencyHotline,
+      emergencyHotline: savedHotline,
+      emergencyContacts: savedContacts,
       alertBannerEnabled: general.alert_banner_enabled ?? defaults.alertBannerEnabled,
       alertBannerText: general.alert_banner_text || defaults.alertBannerText,
       mapCenterLat: map.default_center?.[0] ?? defaults.mapCenterLat,
@@ -82,6 +134,7 @@ export async function updateSystemSettingsAction(
       updates.appName !== undefined ||
       updates.tagline !== undefined ||
       updates.emergencyHotline !== undefined ||
+      updates.emergencyContacts !== undefined ||
       updates.alertBannerEnabled !== undefined ||
       updates.alertBannerText !== undefined
     ) {
@@ -97,6 +150,7 @@ export async function updateSystemSettingsAction(
         ...(updates.appName !== undefined ? { app_name: updates.appName } : {}),
         ...(updates.tagline !== undefined ? { tagline: updates.tagline } : {}),
         ...(updates.emergencyHotline !== undefined ? { emergency_hotline: updates.emergencyHotline } : {}),
+        ...(updates.emergencyContacts !== undefined ? { emergency_contacts: updates.emergencyContacts } : {}),
         ...(updates.alertBannerEnabled !== undefined ? { alert_banner_enabled: updates.alertBannerEnabled } : {}),
         ...(updates.alertBannerText !== undefined ? { alert_banner_text: updates.alertBannerText } : {}),
       };

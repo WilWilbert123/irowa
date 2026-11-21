@@ -5,10 +5,44 @@ import { useEffect, useState, useCallback } from "react";
 import { getSystemSettingsAction, SystemSettingsData } from "@/actions/settings-actions";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
+export const DEFAULT_EMERGENCY_CONTACTS = [
+  {
+    id: "national",
+    agency: "National Emergency Hotline",
+    numbers: ["911"],
+  },
+  {
+    id: "mdrrmo",
+    agency: "MDRRMO",
+    numbers: ["0919-831-4437", "0998-970-5574"],
+  },
+  {
+    id: "spdrrmo",
+    agency: "SPDRRMO Irosin Extension",
+    numbers: ["0951-227-5224"],
+  },
+  {
+    id: "pnp",
+    agency: "PNP",
+    numbers: ["0998-598-6071"],
+  },
+  {
+    id: "bfp",
+    agency: "BFP",
+    numbers: ["0951-899-8434", "0977-382-3114"],
+  },
+  {
+    id: "rhu",
+    agency: "RHU",
+    numbers: ["0930-3611-801"],
+  },
+];
+
 export const DEFAULT_SYSTEM_SETTINGS: SystemSettingsData = {
   appName: "IroWa",
   tagline: "Irosin Water Resources Map",
-  emergencyHotline: "0917-123-4567",
+  emergencyHotline: "0919-831-4437",
+  emergencyContacts: DEFAULT_EMERGENCY_CONTACTS,
   alertBannerEnabled: true,
   alertBannerText: "Water Advisory: Regular conservation guidelines in effect for low-elevation barangays.",
   mapCenterLat: 12.7042,
