@@ -25,7 +25,6 @@ import { logoutAdminAction } from "@/actions/admin-auth-actions";
 import { getAllSubmissionsAction } from "@/actions/submission-actions";
 import { getAllReportsAction } from "@/actions/report-actions";
 import { getReportedMessagesAction } from "@/actions/chat-actions";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { cn } from "@/lib/utils";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
@@ -303,7 +302,6 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
           </div>
 
           <div className="flex items-center gap-1 shrink-0">
-            <ThemeToggle className="scale-85 origin-right" />
             <form action={logoutAdminAction}>
               <button
                 type="submit"

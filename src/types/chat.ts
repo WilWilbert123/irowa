@@ -12,6 +12,14 @@ export interface ChatRoomWithSource extends ChatRoomRow {
     slug: string;
     category: string;
     barangay: string | null;
+    availability_status?: string;
+    custom_icon_id?: string;
+    custom_icon_color?: string;
+    photos?: Array<{
+      id: string;
+      storage_path: string;
+      is_primary: boolean;
+    }>;
   };
   last_message?: ChatMessageRow | null;
   message_count?: number;

@@ -464,7 +464,8 @@ export default function LocationPickerMap({
       {/* Map rendering container */}
       <div ref={containerRef} className={`w-full ${className} bg-slate-100 dark:bg-slate-900 z-0`} />
 
-      {/* Expandable Search Control on top-left */}
+      {/* Expandable Search Control on top-left (hidden in readOnly mode) */}
+      {!readOnly && (
       <div ref={searchContainerRef} className="absolute top-3 left-3 z-[400]">
         {!isSearchExpanded ? (
           <button
@@ -542,6 +543,7 @@ export default function LocationPickerMap({
           </div>
         )}
       </div>
+      )}
 
       {/* Floating control buttons on top-right */}
       <div className="absolute top-3 right-3 z-[400] flex flex-col gap-2">

@@ -252,9 +252,26 @@ export default function AdminChatManagementPage() {
                         <td className="py-2.5 px-4 font-bold text-slate-900 dark:text-white">
                           <Link
                             href={`/admin/chat/${room.water_source_id}`}
-                            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-flex items-center gap-1.5"
+                            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-flex items-center gap-2.5"
                           >
-                            <MessageSquare className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                            {(() => {
+                              const primaryPhoto =
+                                room.water_source?.photos?.find((p) => p.is_primary) ||
+                                room.water_source?.photos?.[0];
+                              return primaryPhoto?.storage_path ? (
+                                <div className="w-7 h-7 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shrink-0 bg-slate-100 dark:bg-slate-800">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={primaryPhoto.storage_path}
+                                    alt={room.water_source?.name || "Water Point"}
+                                    loading="lazy"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <MessageSquare className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                              );
+                            })()}
                             <span>{room.water_source?.name || "Water Point"}</span>
                           </Link>
                         </td>
@@ -334,9 +351,25 @@ export default function AdminChatManagementPage() {
                   <div className="flex items-center justify-between gap-2">
                     <Link
                       href={`/admin/chat/${room.water_source_id}`}
-                      className="font-bold text-sm text-slate-900 dark:text-white hover:text-blue-600 block truncate"
+                      className="font-bold text-sm text-slate-900 dark:text-white hover:text-blue-600 flex items-center gap-2 min-w-0"
                     >
-                      {room.water_source?.name || "Water Point"}
+                      {(() => {
+                        const primaryPhoto =
+                          room.water_source?.photos?.find((p) => p.is_primary) ||
+                          room.water_source?.photos?.[0];
+                        return primaryPhoto?.storage_path ? (
+                          <div className="w-7 h-7 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shrink-0 bg-slate-100 dark:bg-slate-800">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={primaryPhoto.storage_path}
+                              alt={room.water_source?.name || "Water Point"}
+                              loading="lazy"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : null;
+                      })()}
+                      <span className="truncate">{room.water_source?.name || "Water Point"}</span>
                     </Link>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 inline-flex items-center gap-1 shrink-0">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />

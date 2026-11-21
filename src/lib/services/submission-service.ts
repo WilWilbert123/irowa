@@ -129,54 +129,7 @@ export async function saveSubmissionCustomIcon(
   }
 }
 
-export const MOCK_SUBMISSIONS: WaterSubmissionWithPhotos[] = [
-  {
-    id: "sub-1",
-    visitor_id: "v_local_resident",
-    submitter_name: "Eduardo Bermas",
-    name: "Sitio Tubig-Labi Spring",
-    category: "Spring",
-    description: "Cold natural spring overflowing beside the farm trail in Brgy. Cogon. Clean and frequently used by local farmers.",
-    latitude: 12.7150,
-    longitude: 124.0190,
-    address: "Sitio Tubig-Labi, Brgy. Cogon",
-    barangay: "Cogon",
-    availability_status: "Available",
-    operating_hours: "24/7",
-    contact_information: null,
-    status: "pending",
-    reviewed_by: null,
-    reviewed_at: null,
-    rejection_reason: null,
-    published_water_source_id: null,
-    created_at: new Date(Date.now() - 3600000 * 5).toISOString(),
-    updated_at: new Date(Date.now() - 3600000 * 5).toISOString(),
-    photos: [],
-  },
-  {
-    id: "sub-2",
-    visitor_id: "v_visitor_99",
-    submitter_name: "Angela Santos",
-    name: "Barangay Zone 3 Emergency Tap",
-    category: "Public Water Source",
-    description: "New public faucet installation installed by barangay officials for the dry season.",
-    latitude: 12.7060,
-    longitude: 124.0340,
-    address: "Poblacion Zone 3 Covered Court",
-    barangay: "San Pedro",
-    availability_status: "Available",
-    operating_hours: "6:00 AM - 8:00 PM",
-    contact_information: null,
-    status: "pending",
-    reviewed_by: null,
-    reviewed_at: null,
-    rejection_reason: null,
-    published_water_source_id: null,
-    created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
-    updated_at: new Date(Date.now() - 3600000 * 12).toISOString(),
-    photos: [],
-  },
-];
+export const MOCK_SUBMISSIONS: WaterSubmissionWithPhotos[] = [];
 
 export async function submitWaterSource(data: SubmissionFormData): Promise<{
   success: boolean;

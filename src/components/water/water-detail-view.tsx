@@ -3,6 +3,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   MapPin,
   Clock,
@@ -17,6 +18,7 @@ import {
   ArrowLeft,
   Calendar,
   CheckCircle2,
+  Compass,
 } from "lucide-react";
 import { WaterSourceWithPhotos } from "@/types/water";
 import { PhotoGallery } from "./photo-gallery";
@@ -25,6 +27,19 @@ import { getDirectionsUrl } from "@/lib/map/map-utils";
 import { formatDate, isVerificationStale } from "@/lib/utils/date-utils";
 import { useVisitor } from "@/contexts/visitor-context";
 import { cn } from "@/lib/utils";
+
+const LocationPickerMap = dynamic(
+  () => import("@/components/map/location-picker-map"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[260px] sm:h-[300px] w-full rounded-2xl bg-slate-100 dark:bg-slate-800/60 animate-pulse flex flex-col items-center justify-center gap-2 border border-slate-200 dark:border-slate-800">
+        <div className="w-7 h-7 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+        <span className="text-xs font-semibold text-slate-400">Loading pinned map location...</span>
+      </div>
+    ),
+  }
+);
 
 interface WaterDetailViewProps {
   source: WaterSourceWithPhotos;
@@ -201,6 +216,35 @@ export function WaterDetailView({ source }: WaterDetailViewProps) {
               </span>
             </div>
           </div>
+        </div>
+
+        {/* Embedded Leaflet Map Location Preview */}
+        <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <MapPin className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <span>Pinned Map Location</span>
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Exact verified coordinates in {source.barangay ? `Barangay ${source.barangay}, ` : ""}Irosin, Sorsogon
+              </p>
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-900/40 text-xs font-mono font-bold text-blue-700 dark:text-blue-300 self-start sm:self-auto">
+              <Compass className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span>{source.latitude.toFixed(5)}° N, {source.longitude.toFixed(5)}° E</span>
+            </div>
+          </div>
+
+          <LocationPickerMap
+            latitude={source.latitude}
+            longitude={source.longitude}
+            readOnly={true}
+            defaultLayer="satellite"
+            markerIconId={source.custom_icon?.iconId}
+            markerColor={source.custom_icon?.color}
+            className="h-[260px] sm:h-[320px] w-full"
+          />
         </div>
 
         {/* Safety & Potability Disclaimer (Required in Prompt 7) */}

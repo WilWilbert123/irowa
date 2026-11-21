@@ -20,7 +20,7 @@ export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetrics>
       .select("id, name, category, barangay, availability_status, is_published, created_at, updated_at")
       .is("archived_at", null);
 
-    const sourceList = sourcesErr || !sources ? MOCK_IROSIN_WATER_SOURCES : sources;
+    const sourceList = sourcesErr || !sources ? [] : sources;
 
     const categoryBreakdown: Record<string, number> = {
       "River": 0,
@@ -131,7 +131,7 @@ export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetrics>
       unavailableCount,
       pendingSubmissionsCount,
       pendingReportsCount,
-      totalChatMessages: totalChatCount ?? (subs ? 0 : 142),
+      totalChatMessages: totalChatCount ?? 0,
       totalSubmissionsCount: totalSubsCount ?? subs?.length ?? 0,
       totalReportsCount: totalRepsCount ?? reps?.length ?? 0,
       activeVisitorsCount: totalVisitorsCount ?? 0,
@@ -158,39 +158,24 @@ function formatRelativeTime(dateStr?: string | null): string {
 
 function getFallbackMetrics(): AdminDashboardMetrics {
   return {
-    totalWaterSources: MOCK_IROSIN_WATER_SOURCES.length,
-    availableCount: MOCK_IROSIN_WATER_SOURCES.filter((s) => s.availability_status === "Available").length,
-    limitedCount: MOCK_IROSIN_WATER_SOURCES.filter((s) => s.availability_status === "Limited Supply").length,
-    unavailableCount: MOCK_IROSIN_WATER_SOURCES.filter((s) => s.availability_status === "Temporarily Unavailable").length,
-    pendingSubmissionsCount: MOCK_SUBMISSIONS.filter((s) => s.status === "pending").length,
-    pendingReportsCount: MOCK_REPORTS.filter((r) => r.status === "pending").length,
-    totalChatMessages: 4,
-    totalSubmissionsCount: MOCK_SUBMISSIONS.length,
-    totalReportsCount: MOCK_REPORTS.length,
-    activeVisitorsCount: 1,
-    recentActivity: [
-      {
-        id: "act-1",
-        title: "Bitang Waterfall marked Available",
-        type: "Status Update",
-        timestamp: "10m ago",
-        badge: "Verified",
-      },
-      {
-        id: "act-2",
-        title: "San Mateo Cold Springs routine check",
-        type: "Field Inspection",
-        timestamp: "1h ago",
-        badge: "Verified",
-      },
-    ],
+    totalWaterSources: 0,
+    availableCount: 0,
+    limitedCount: 0,
+    unavailableCount: 0,
+    pendingSubmissionsCount: 0,
+    pendingReportsCount: 0,
+    totalChatMessages: 0,
+    totalSubmissionsCount: 0,
+    totalReportsCount: 0,
+    activeVisitorsCount: 0,
+    recentActivity: [],
     categoryBreakdown: {
-      "River": 2,
-      "Waterfall": 1,
-      "Spring": 2,
-      "Resort": 1,
-      "Water Refilling Station": 1,
-      "Public Water Source": 1,
+      "River": 0,
+      "Waterfall": 0,
+      "Spring": 0,
+      "Resort": 0,
+      "Water Refilling Station": 0,
+      "Public Water Source": 0,
       "Deep Well": 0,
       "Community Water Point": 0,
       "Other": 0,

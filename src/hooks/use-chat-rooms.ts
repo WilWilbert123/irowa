@@ -6,8 +6,8 @@ import { ChatRoomWithSource } from "@/types/chat";
 import { getChatRooms, getPublishedAnnouncements } from "@/lib/services/chat-service";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
-const CACHED_ROOMS_KEY = "irowa_offline_chat_rooms";
-const CACHED_ANNOUNCEMENTS_KEY = "irowa_offline_announcements";
+const CACHED_ROOMS_KEY = "irowa_offline_chat_rooms_v2";
+const CACHED_ANNOUNCEMENTS_KEY = "irowa_offline_announcements_v2";
 
 export function useChatRooms() {
   const [rooms, setRooms] = useState<ChatRoomWithSource[]>([]);

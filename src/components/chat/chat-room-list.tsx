@@ -5,7 +5,7 @@ import React, { useState, useMemo } from "react";
 import { MessageSquare, Droplets, AlertTriangle, Search, X, Radio, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { ChatRoomWithSource } from "@/types/chat";
 import { useChatRooms } from "@/hooks/use-chat-rooms";
-import { CATEGORY_COLORS } from "@/lib/utils/constants";
+import { getCircleIconPreset } from "@/lib/map/circle-icons";
 import { formatRelativeTime } from "@/lib/utils/date-utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -131,35 +131,73 @@ export function ChatRoomList({ activeSourceId, onSelectRoom }: ChatRoomListProps
               const source = room.water_source;
               const sourceId = room.water_source_id;
               const isSelected = activeSourceId === sourceId;
-              const colorDef =
-                CATEGORY_COLORS[(source?.category as any) || "Other"] ||
-                CATEGORY_COLORS["Other"];
               const lastMsg = room.last_message;
               const msgCount = room.message_count || 0;
+
+              const primaryPhoto =
+                source?.photos?.find((p) => p.is_primary) || source?.photos?.[0];
+              const preset = getCircleIconPreset(
+                source?.custom_icon_id,
+                source?.category || "Other",
+                source?.name
+              );
+              const markerColor = source?.custom_icon_color || preset.defaultColor;
 
               return (
                 <button
                   key={room.id}
                   onClick={() => onSelectRoom && onSelectRoom(sourceId)}
                   className={cn(
-                    "w-full flex items-center justify-between p-2.5 sm:p-3 rounded-2xl transition-all duration-150 ease-out cursor-pointer text-left select-none active:scale-[0.98]",
+                    "w-full flex items-center justify-between p-2.5 sm:p-3 rounded-2xl transition-all duration-150 ease-out cursor-pointer text-left select-none active:scale-[0.98] group",
                     isSelected
                       ? "bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200/90 dark:border-blue-800/70 shadow-2xs"
                       : "hover:bg-slate-100/80 dark:hover:bg-slate-800/60 border border-transparent"
                   )}
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    {/* Category Icon */}
-                    <div
-                      className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border shadow-2xs",
-                        colorDef.bg,
-                        colorDef.border,
-                        colorDef.text
-                      )}
-                    >
-                      <Droplets className="h-5 w-5" />
-                    </div>
+                    {/* Water Source Map Photo or Custom Map Icon */}
+                    {primaryPhoto?.storage_path ? (
+                      <div className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 border border-slate-200/80 dark:border-slate-700/80 shadow-xs bg-slate-100 dark:bg-slate-800">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={primaryPhoto.storage_path}
+                          alt={source?.name || "Water source"}
+                          loading="lazy"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                        />
+                        <div
+                          className="absolute bottom-0.5 right-0.5 w-4 h-4 rounded-full border border-white dark:border-slate-900 flex items-center justify-center shadow-xs"
+                          style={{ backgroundColor: markerColor }}
+                        >
+                          <svg
+                            className="w-2.5 h-2.5 text-white"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            dangerouslySetInnerHTML={{ __html: preset.svgPath }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border-2 border-white dark:border-slate-800 shadow-sm ring-1 ring-black/5"
+                        style={{ backgroundColor: markerColor }}
+                      >
+                        <svg
+                          className="w-5 h-5 text-white"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          dangerouslySetInnerHTML={{ __html: preset.svgPath }}
+                        />
+                      </div>
+                    )}
 
                     {/* Room Info */}
                     <div className="min-w-0 flex-1 pr-1">

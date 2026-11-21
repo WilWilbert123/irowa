@@ -206,11 +206,32 @@ export interface DatabaseTableInfo {
   name: string;
   displayName: string;
   rowCount: number;
+  estimatedBytes: number;
   isClearable: boolean;
   category: "transient" | "core";
   description: string;
   safetyReason: string;
 }
+
+export interface SupabaseStorageMetrics {
+  mediaBytes: number;
+  mediaFilesCount: number;
+}
+
+const TABLE_AVG_ROW_BYTES: Record<string, number> = {
+  audit_logs: 2560,
+  chat_messages: 1536,
+  visitor_sessions: 1536,
+  notifications: 2048,
+  push_subscriptions: 2048,
+  water_sources: 4096,
+  admin_profiles: 2048,
+  application_settings: 8192,
+  water_submissions: 3584,
+  water_reports: 2560,
+  chat_rooms: 1024,
+  announcements: 3072,
+};
 
 const MONITORED_TABLES: Array<{
   name: string;
@@ -320,25 +341,29 @@ const MONITORED_TABLES: Array<{
 
 export async function getDatabaseTablesAction(): Promise<DatabaseTableInfo[]> {
   if (!isSupabaseConfigured()) {
-    return MONITORED_TABLES.map((t) => ({ ...t, rowCount: 0 }));
+    return MONITORED_TABLES.map((t) => ({ ...t, rowCount: 0, estimatedBytes: 0 }));
   }
 
   try {
     const admin = createAdminClient();
     const results = await Promise.all(
       MONITORED_TABLES.map(async (table) => {
+        const avgRowBytes = TABLE_AVG_ROW_BYTES[table.name] || 2048;
         try {
           const { count, error } = await admin
             .from(table.name as any)
             .select("*", { count: "exact", head: true });
+          const rowCount = error ? 0 : count || 0;
           return {
             ...table,
-            rowCount: error ? 0 : count || 0,
+            rowCount,
+            estimatedBytes: rowCount * avgRowBytes,
           };
         } catch {
           return {
             ...table,
             rowCount: 0,
+            estimatedBytes: 0,
           };
         }
       })
@@ -346,7 +371,42 @@ export async function getDatabaseTablesAction(): Promise<DatabaseTableInfo[]> {
     return results;
   } catch (err) {
     console.error("Failed to fetch database table info:", err);
-    return MONITORED_TABLES.map((t) => ({ ...t, rowCount: 0 }));
+    return MONITORED_TABLES.map((t) => ({ ...t, rowCount: 0, estimatedBytes: 0 }));
+  }
+}
+
+export async function getStorageMetricsAction(): Promise<SupabaseStorageMetrics> {
+  if (!isSupabaseConfigured()) {
+    return { mediaBytes: 0, mediaFilesCount: 0 };
+  }
+
+  try {
+    const admin = createAdminClient();
+    const buckets = ["water-photos", "submission-photos"];
+    let mediaBytes = 0;
+    let mediaFilesCount = 0;
+
+    await Promise.all(
+      buckets.map(async (bucket) => {
+        try {
+          const { data, error } = await admin.storage.from(bucket).list("", { limit: 1000 });
+          if (!error && data) {
+            data.forEach((item: any) => {
+              if (item.name && item.name !== ".emptyFolderPlaceholder") {
+                mediaFilesCount += 1;
+                mediaBytes += Number(item.metadata?.size || 0);
+              }
+            });
+          }
+        } catch {
+          // ignore missing bucket
+        }
+      })
+    );
+
+    return { mediaBytes, mediaFilesCount };
+  } catch {
+    return { mediaBytes: 0, mediaFilesCount: 0 };
   }
 }
 
