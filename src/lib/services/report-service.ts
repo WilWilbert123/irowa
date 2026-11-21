@@ -5,44 +5,7 @@ import { WaterReportWithDetails } from "@/types/report";
 import { ReportFormData } from "../validations/report-schema";
 import { checkRateLimit } from "../utils/rate-limit";
 
-export const MOCK_REPORTS: WaterReportWithDetails[] = [
-  {
-    id: "rep-1",
-    water_source_id: "c3333333-3333-4333-c333-333333333333",
-    visitor_id: "v_concerned_resident",
-    report_type: "Incorrect availability",
-    description: "Low water level observed at Maasim River due to recent heat. Not suitable for swimming right now.",
-    status: "pending",
-    reviewed_by: null,
-    reviewed_at: null,
-    admin_notes: null,
-    created_at: new Date(Date.now() - 3600000 * 3).toISOString(),
-    water_source: {
-      id: "c3333333-3333-4333-c333-333333333333",
-      name: "Maasim River",
-      category: "River",
-      barangay: "Gabao",
-    },
-  },
-  {
-    id: "rep-2",
-    water_source_id: "77777777-7777-4777-a777-777777777777",
-    visitor_id: "v_farmer_patag",
-    report_type: "Incorrect information",
-    description: "The communal tap pressure was restored after maintenance this morning.",
-    status: "resolved",
-    reviewed_by: null,
-    reviewed_at: new Date(Date.now() - 3600000 * 10).toISOString(),
-    admin_notes: "Status updated to Limited Supply after field check.",
-    created_at: new Date(Date.now() - 3600000 * 18).toISOString(),
-    water_source: {
-      id: "77777777-7777-4777-a777-777777777777",
-      name: "Patag Barangay Water Point",
-      category: "Community Water Point",
-      barangay: "Patag",
-    },
-  },
-];
+export const MOCK_REPORTS: WaterReportWithDetails[] = [];
 
 export async function submitWaterReport(data: ReportFormData): Promise<{
   success: boolean;

@@ -3,58 +3,39 @@ import { createClient, isSupabaseConfigured } from "../supabase/client";
 import { createAdminClient } from "../supabase/admin";
 import { ChatMessageRow, ChatRoomWithSource } from "@/types/chat";
 import { checkRateLimit } from "../utils/rate-limit";
+import { getWaterSourceCustomIcons, getWaterSourceCategoryOverrides } from "./water-service";
+import { getDefaultCircleIconForCategory } from "../map/circle-icons";
 
 // Sample active discussions for demo/fallback mode
-export const MOCK_CHAT_MESSAGES: Record<string, ChatMessageRow[]> = {
-  "a1111111-1111-4111-a111-111111111111": [
-    {
-      id: "m1",
-      chat_room_id: "room-bitang",
-      visitor_id: "v_juan",
-      display_name: "Juan Dela Cruz",
-      message: "Is the trail to Bitang Waterfall safe today? Did it rain heavily last night?",
-      status: "published",
-      moderation_reason: null,
-      created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-      updated_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-    },
-    {
-      id: "m2",
-      chat_room_id: "room-bitang",
-      visitor_id: "v_elena",
-      display_name: "Elena Ramos",
-      message: "The trail is dry and clear! Local guides are at the trailhead in Brgy. Liang.",
-      status: "published",
-      moderation_reason: null,
-      created_at: new Date(Date.now() - 1800000).toISOString(),
-      updated_at: new Date(Date.now() - 1800000).toISOString(),
-    },
-  ],
-  "c3333333-3333-4333-c333-333333333333": [
-    {
-      id: "m3",
-      chat_room_id: "room-maasim",
-      visitor_id: "v_maria",
-      display_name: "Maria Santos",
-      message: "May I ask if the water level at Maasim River is still good for swimming?",
-      status: "published",
-      moderation_reason: null,
-      created_at: new Date(Date.now() - 300000).toISOString(),
-      updated_at: new Date(Date.now() - 300000).toISOString(),
-    },
-    {
-      id: "m4",
-      chat_room_id: "room-maasim",
-      visitor_id: "v_rizal",
-      display_name: "Rizal Dela Cruz",
-      message: "Yes, it is still good! The water is clear and safe as of this morning.",
-      status: "published",
-      moderation_reason: null,
-      created_at: new Date(Date.now() - 120000).toISOString(),
-      updated_at: new Date(Date.now() - 120000).toISOString(),
-    },
-  ],
-};
+export const MOCK_CHAT_MESSAGES: Record<string, ChatMessageRow[]> = {};
+
+const SPAM_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
+  {
+    pattern: /(https?:\/\/[^\s]+|www\.[^\s]+|\b[a-z0-9-]+\.(com|net|org|xyz|top|click|info|biz|ru|cn|tk|ly|me)\b)/i,
+    reason: "Automated filter: External URL or suspicious link detected",
+  },
+  {
+    pattern: /\b(free\s*coin|claim\s*now|crypto\s*airdrop|casino|scatter|bet88|jili|gcash\s*free|click\s*here\s*to\s*win|earn\s*money\s*fast)\b/i,
+    reason: "Automated filter: Promotional spam or scam keywords detected",
+  },
+  {
+    pattern: /\b(putang\s*ina|puta|gago|tarantado|ulol|bobo|tanga|inutil|pakshet|fuck|shit|bitch|asshole|scammer)\b/i,
+    reason: "Automated filter: Profanity or abusive language detected",
+  },
+];
+
+export function evaluateMessageSafety(text: string): {
+  isFlagged: boolean;
+  reason: string | null;
+} {
+  const cleaned = text.trim();
+  for (const rule of SPAM_PATTERNS) {
+    if (rule.pattern.test(cleaned)) {
+      return { isFlagged: true, reason: rule.reason };
+    }
+  }
+  return { isFlagged: false, reason: null };
+}
 
 export async function getChatRoomForWaterSource(waterSourceId: string): Promise<string> {
   if (!isSupabaseConfigured()) {
@@ -108,6 +89,62 @@ export async function getChatMessages(waterSourceId: string, limit: number = 50)
   }
 }
 
+export async function getAdminChatRoomOverview(waterSourceId: string): Promise<{
+  waterSource: any | null;
+  room: any | null;
+  messages: ChatMessageRow[];
+}> {
+  if (!isSupabaseConfigured()) {
+    return { waterSource: null, room: null, messages: [] };
+  }
+  try {
+    const admin = createAdminClient();
+    const [{ data: sourceData }, { data: roomData }] = await Promise.all([
+      admin
+        .from("water_sources")
+        .select("id, name, slug, category, barangay, availability_status, photos:water_photos(id, storage_path, is_primary)")
+        .eq("id", waterSourceId)
+        .maybeSingle(),
+      admin
+        .from("chat_rooms")
+        .select("id, water_source_id, is_active, created_at")
+        .eq("water_source_id", waterSourceId)
+        .maybeSingle(),
+    ]);
+
+    let activeRoom = roomData;
+    if (!activeRoom && sourceData) {
+      const { data: createdRoom } = await admin
+        .from("chat_rooms")
+        .insert({ water_source_id: waterSourceId, is_active: true })
+        .select("id, water_source_id, is_active, created_at")
+        .single();
+      activeRoom = createdRoom;
+    }
+
+    if (!activeRoom) {
+      return { waterSource: sourceData || null, room: null, messages: [] };
+    }
+
+    // Fetch ALL messages for admin oversight (published, hidden, flagged, deleted)
+    const { data: messagesData } = await admin
+      .from("chat_messages")
+      .select("*")
+      .eq("chat_room_id", activeRoom.id)
+      .order("created_at", { ascending: false })
+      .limit(200);
+
+    return {
+      waterSource: sourceData || null,
+      room: activeRoom,
+      messages: (messagesData || []) as ChatMessageRow[],
+    };
+  } catch (err) {
+    console.error("Failed to fetch admin chat room overview:", err);
+    return { waterSource: null, room: null, messages: [] };
+  }
+}
+
 export async function sendChatMessage(
   waterSourceId: string,
   visitorId: string,
@@ -124,6 +161,9 @@ export async function sendChatMessage(
   }
 
   const roomId = await getChatRoomForWaterSource(waterSourceId);
+  const safety = evaluateMessageSafety(message);
+  const initialStatus = safety.isFlagged ? "flagged" : "published";
+  const moderationReason = safety.reason;
 
   if (!isSupabaseConfigured()) {
     const newMsg: ChatMessageRow = {
@@ -132,8 +172,8 @@ export async function sendChatMessage(
       visitor_id: visitorId,
       display_name: displayName,
       message: message.trim(),
-      status: "published",
-      moderation_reason: null,
+      status: initialStatus,
+      moderation_reason: moderationReason,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -145,15 +185,16 @@ export async function sendChatMessage(
   }
 
   try {
-    const supabase = createClient();
-    const { data, error } = await supabase
+    const admin = createAdminClient();
+    const { data, error } = await admin
       .from("chat_messages")
       .insert({
         chat_room_id: roomId,
         visitor_id: visitorId,
         display_name: displayName,
         message: message.trim(),
-        status: "published",
+        status: initialStatus,
+        moderation_reason: moderationReason,
       })
       .select()
       .single();
@@ -200,33 +241,42 @@ export async function getChatRooms(): Promise<ChatRoomWithSource[]> {
   }
   try {
     const supabase = createClient();
-    const { data, error } = await supabase
-      .from("chat_rooms")
-      .select(`
-        id,
-        water_source_id,
-        is_active,
-        created_at,
-        water_source:water_source_id (
+    const [{ data, error }, iconsMap, categoryOverrides] = await Promise.all([
+      supabase
+        .from("chat_rooms")
+        .select(`
           id,
-          name,
-          slug,
-          category,
-          barangay,
-          availability_status,
-          is_published,
-          archived_at
-        ),
-        chat_messages (
-          id,
-          message,
-          display_name,
+          water_source_id,
+          is_active,
           created_at,
-          status
-        )
-      `)
-      .eq("is_active", true)
-      .order("created_at", { ascending: true });
+          water_source:water_source_id (
+            id,
+            name,
+            slug,
+            category,
+            barangay,
+            availability_status,
+            is_published,
+            archived_at,
+            photos:water_photos (
+              id,
+              storage_path,
+              is_primary
+            )
+          ),
+          chat_messages (
+            id,
+            message,
+            display_name,
+            created_at,
+            status
+          )
+        `)
+        .eq("is_active", true)
+        .order("created_at", { ascending: true }),
+      getWaterSourceCustomIcons(),
+      getWaterSourceCategoryOverrides(),
+    ]);
 
     if (error || !data) {
       console.error("Error fetching chat rooms:", error);
@@ -247,12 +297,24 @@ export async function getChatRooms(): Promise<ChatRoomWithSource[]> {
       );
       const latest = published[0] || null;
 
+      const ws = room.water_source;
+      const effectiveCategory = (ws && categoryOverrides[ws.id]) || ws?.category || "Other";
+      const customIcon = ws ? iconsMap[ws.id] : undefined;
+      const smartDefault = getDefaultCircleIconForCategory(effectiveCategory, ws?.name);
+
       return {
         id: room.id,
         water_source_id: room.water_source_id,
         is_active: room.is_active,
         created_at: room.created_at,
-        water_source: room.water_source,
+        water_source: ws
+          ? {
+              ...ws,
+              category: effectiveCategory,
+              custom_icon_id: customIcon?.iconId || smartDefault.iconId,
+              custom_icon_color: customIcon?.color || smartDefault.color,
+            }
+          : undefined,
         message_count: published.length,
         last_message: latest,
       };
@@ -285,18 +347,23 @@ export async function getPublishedAnnouncements() {
 }
 
 export async function getReportedMessages(): Promise<ChatMessageRow[]> {
-  return [
-    {
-      id: "rep-msg-1",
-      chat_room_id: "room-san-mateo",
-      visitor_id: "v_spammer_12",
-      display_name: "PromoBot",
-      message: "Free coin claim at suspicious-water-link.com click now!",
-      status: "flagged",
-      moderation_reason: "Automated spam link detected by community filter",
-      created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-      updated_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-    },
-  ];
+  if (!isSupabaseConfigured()) {
+    return [];
+  }
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("chat_messages")
+      .select("*")
+      .eq("status", "flagged")
+      .order("created_at", { ascending: false });
+
+    if (error || !data) {
+      return [];
+    }
+    return data as ChatMessageRow[];
+  } catch {
+    return [];
+  }
 }
 

@@ -278,7 +278,10 @@ export function MapView({
         source.custom_icon?.iconId,
         source.custom_icon?.color
       );
-      const marker = L.marker([source.latitude, source.longitude], { icon });
+      const marker = L.marker([source.latitude, source.longitude], {
+        icon,
+        zIndexOffset: isSelected ? 1000 : 0,
+      });
 
       marker.bindTooltip(
         source.barangay ? `${source.name} (${source.barangay})` : source.name,

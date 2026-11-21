@@ -15,13 +15,28 @@ interface WaterGridProps {
 export function WaterGrid({ sources, isLoading }: WaterGridProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4 md:gap-5">
+      <div className="w-full grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4 md:gap-5">
         {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div key={i} className="rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 p-2.5 sm:p-4 space-y-2 sm:space-y-3">
-            <Skeleton className="w-full aspect-square sm:aspect-auto sm:h-44 rounded-xl sm:rounded-2xl" />
-            <Skeleton className="w-2/3 h-3.5 sm:h-5 rounded-md" />
-            <Skeleton className="w-1/2 h-3 sm:h-4 rounded-md" />
-            <Skeleton className="w-full h-7 sm:h-10 rounded-lg sm:rounded-xl" />
+          <div
+            key={i}
+            className="w-full rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden flex flex-col"
+          >
+            <Skeleton className="w-full aspect-[4/3] sm:aspect-auto sm:h-48 rounded-none" />
+            <div className="p-2.5 sm:p-4 space-y-2.5 sm:space-y-3 flex-1 flex flex-col justify-between w-full">
+              <div className="space-y-2 w-full">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 w-full">
+                  <Skeleton className="w-11/12 sm:w-3/4 h-4 sm:h-5 rounded-md" />
+                  <Skeleton className="w-16 sm:w-20 h-4 rounded-full shrink-0" />
+                </div>
+                <Skeleton className="w-5/6 h-3 sm:h-4 rounded-md" />
+                <Skeleton className="hidden sm:block w-full h-8 rounded-md" />
+              </div>
+              <div className="pt-2 sm:pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1.5 sm:gap-2 w-full">
+                <Skeleton className="flex-1 h-7 sm:h-9 rounded-lg sm:rounded-xl" />
+                <Skeleton className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl shrink-0" />
+                <Skeleton className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl shrink-0" />
+              </div>
+            </div>
           </div>
         ))}
       </div>

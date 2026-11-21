@@ -38,9 +38,25 @@ export default function WaterChatPage({
           </Link>
 
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300 flex items-center justify-center shrink-0">
-              <Droplets className="h-5 w-5" />
-            </div>
+            {(() => {
+              const primaryPhoto =
+                source?.photos?.find((p) => p.is_primary) ||
+                source?.photos?.[0];
+              return primaryPhoto?.storage_path ? (
+                <div className="w-9 h-9 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-2xs shrink-0 bg-slate-100 dark:bg-slate-800">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={primaryPhoto.storage_path}
+                    alt={source?.name || "Water source"}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300 flex items-center justify-center shrink-0">
+                  <Droplets className="h-5 w-5" />
+                </div>
+              );
+            })()}
             <div className="min-w-0">
               <h3 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white leading-tight truncate">
                 {source?.name || "Water Source Chat"}

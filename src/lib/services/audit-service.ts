@@ -27,26 +27,7 @@ export async function logAdminAction(
 
 export async function getAuditLogs(): Promise<AuditLogRow[]> {
   if (!isSupabaseConfigured()) {
-    return [
-      {
-        id: "log-1",
-        admin_user_id: null,
-        action: "UPDATE_STATUS",
-        entity_type: "water_source",
-        entity_id: "a1111111-1111-4111-a111-111111111111",
-        details: { name: "Bitang Waterfall", status: "Available" },
-        created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-      },
-      {
-        id: "log-2",
-        admin_user_id: null,
-        action: "PUBLISH_ANNOUNCEMENT",
-        entity_type: "announcement",
-        entity_id: "bbbbbbbb-1111-4bbb-bbbb-111111111111",
-        details: { title: "El Niño Preparedness Advisory" },
-        created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-      },
-    ];
+    return [];
   }
 
   try {

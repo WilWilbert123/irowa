@@ -47,9 +47,25 @@ export default function ChatMainPage() {
         {/* Header */}
         <div className="h-16 px-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300 flex items-center justify-center">
-              <Droplets className="h-5 w-5" />
-            </div>
+            {(() => {
+              const primaryPhoto =
+                currentSource?.photos?.find((p) => p.is_primary) ||
+                currentSource?.photos?.[0];
+              return primaryPhoto?.storage_path ? (
+                <div className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-2xs shrink-0 bg-slate-100 dark:bg-slate-800">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={primaryPhoto.storage_path}
+                    alt={currentSource?.name || "Water source"}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300 flex items-center justify-center shrink-0">
+                  <Droplets className="h-5 w-5" />
+                </div>
+              );
+            })()}
             <div>
               <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
                 {currentSource?.name || "Community Discussion"}

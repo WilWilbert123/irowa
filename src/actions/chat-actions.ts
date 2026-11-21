@@ -6,6 +6,7 @@ import {
   sendChatMessage, 
   getChatRoomByWaterSourceId, 
   getChatMessages, 
+  getAdminChatRoomOverview,
   getChatRooms, 
   getReportedMessages 
 } from "@/lib/services/chat-service";
@@ -25,6 +26,10 @@ export async function getMessagesAction(waterSourceId: string) {
   return await getChatMessages(waterSourceId);
 }
 
+export async function getAdminChatRoomOverviewAction(waterSourceId: string) {
+  return await getAdminChatRoomOverview(waterSourceId);
+}
+
 export async function getReportedMessagesAction() {
   return await getReportedMessages();
 }
@@ -42,7 +47,7 @@ export async function sendChatMessageAction(formData: any) {
 
 export async function moderateMessageAction(
   messageId: string,
-  action: "published" | "approved" | "hidden" | "deleted" | "flag" | "restore" | "hide" | "delete",
+  action: "published" | "approved" | "hidden" | "deleted" | "flag" | "restore" | "hide" | "delete" | "purge",
   reason?: string
 ) {
   const normalizedAction = 
@@ -53,7 +58,11 @@ export async function moderateMessageAction(
   const result = await moderateMessage(messageId, normalizedAction, reason);
   if (result.success) {
     await logAdminAction("MODERATE_CHAT_MESSAGE", "chat_message", messageId, { action, reason });
-    revalidatePath("/admin/chat");
+    try {
+      revalidatePath("/admin/chat");
+    } catch {
+      // safe ignore outside static generation store
+    }
   }
   return result;
 }

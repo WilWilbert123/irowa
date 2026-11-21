@@ -33,9 +33,11 @@ import {
   updateSystemSettingsAction,
   updateMapPoiMarkersAction,
   getDatabaseTablesAction,
+  getStorageMetricsAction,
   clearDatabaseTableAction,
   SystemSettingsData,
   DatabaseTableInfo,
+  SupabaseStorageMetrics,
 } from "@/actions/settings-actions";
 import { cn } from "@/lib/utils";
 import { getAdminCache, setAdminCache, ADMIN_CACHE_KEYS } from "@/lib/cache/admin-cache";
@@ -74,6 +76,10 @@ export default function AdminSettingsPage() {
   );
 
   const [tables, setTables] = useState<DatabaseTableInfo[]>([]);
+  const [storageMetrics, setStorageMetrics] = useState<SupabaseStorageMetrics>({
+    mediaBytes: 0,
+    mediaFilesCount: 0,
+  });
   const [loading, setLoading] = useState(!cachedSettings);
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -132,15 +138,17 @@ export default function AdminSettingsPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [settingsData, tablesData] = await Promise.all([
+      const [settingsData, tablesData, storageData] = await Promise.all([
         getSystemSettingsAction(),
         getDatabaseTablesAction(),
+        getStorageMetricsAction(),
       ]);
       setSettings((curr) => {
         if (saving || isTogglingPoi) return curr;
         return settingsData;
       });
       setTables(tablesData);
+      setStorageMetrics(storageData);
       setAdminCache(ADMIN_CACHE_KEYS.SETTINGS, settingsData);
     } catch (err) {
       console.error("Failed to load settings data:", err);
@@ -196,9 +204,11 @@ export default function AdminSettingsPage() {
           type: "success",
           text: `Table "${clearingTable.displayName}" cleared successfully (${res.deletedCount || 0} rows purged).`,
         });
-        // Optimistically update row count
+        // Optimistically update row count and byte usage
         setTables((prev) =>
-          prev.map((t) => (t.name === clearingTable.name ? { ...t, rowCount: 0 } : t))
+          prev.map((t) =>
+            t.name === clearingTable.name ? { ...t, rowCount: 0, estimatedBytes: 0 } : t
+          )
         );
         setClearingTable(null);
       } else {
@@ -217,10 +227,26 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const formatBytes = useCallback((bytes: number) => {
+    if (bytes <= 0) return "0 KB";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }, []);
+
   const totalRecords = useMemo(
     () => tables.reduce((acc, t) => acc + t.rowCount, 0),
     [tables]
   );
+
+  const totalDbBytes = useMemo(
+    () => tables.reduce((acc, t) => acc + (t.estimatedBytes ?? t.rowCount * 2048), 0),
+    [tables]
+  );
+
+  const totalUsedBytes = totalDbBytes + storageMetrics.mediaBytes;
+  const totalLimitBytes = 500 * 1024 * 1024; // 500 MB Supabase Free Plan Quota
+  const availableMB = Math.max(0, (totalLimitBytes - totalUsedBytes) / (1024 * 1024)).toFixed(2);
   const clearableCount = tables.filter((t) => t.isClearable).length;
 
   return (
@@ -640,12 +666,20 @@ export default function AdminSettingsPage() {
               <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                 <HardDrive className="w-4 h-4" />
               </div>
-              <div className="min-w-0">
-                <span className="text-[10px] text-slate-400 font-bold block uppercase">
-                  Supabase Storage
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase">
+                    Supabase Storage (500 MB Quota)
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400">
+                    {formatBytes(totalUsedBytes)} Used
+                  </span>
+                </div>
+                <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 block">
+                  {availableMB} MB Available
                 </span>
-                <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                  500 MB Available
+                <span className="text-[10px] text-slate-400 block truncate">
+                  DB Rows: {formatBytes(totalDbBytes)} • Photos ({storageMetrics.mediaFilesCount}): {formatBytes(storageMetrics.mediaBytes)}
                 </span>
               </div>
             </div>
@@ -699,12 +733,21 @@ export default function AdminSettingsPage() {
                         </div>
                       </td>
 
-                      {/* Row Count */}
+                      {/* Row Count & Size */}
                       <td className="py-2 px-3">
-                        <span className="font-bold text-xs text-slate-900 dark:text-white">
-                          {table.rowCount.toLocaleString()}
-                        </span>
-                        <span className="text-[10px] text-slate-400 ml-1">rows</span>
+                        <div className="flex items-center gap-1.5">
+                          <div>
+                            <span className="font-bold text-xs text-slate-900 dark:text-white">
+                              {table.rowCount.toLocaleString()}
+                            </span>
+                            <span className="text-[10px] text-slate-400 ml-1">rows</span>
+                          </div>
+                          {table.rowCount > 0 && (
+                            <span className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                              ~{formatBytes(table.estimatedBytes ?? table.rowCount * 2048)}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Category */}

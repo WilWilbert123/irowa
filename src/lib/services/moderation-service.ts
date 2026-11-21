@@ -3,25 +3,40 @@ import { createAdminClient } from "../supabase/admin";
 
 export async function moderateMessage(
   messageId: string,
-  action: "hide" | "restore" | "delete" | "flag",
+  action: "hide" | "restore" | "delete" | "flag" | "purge",
   reason?: string,
   adminId?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const admin = createAdminClient();
-    const newStatus = action === "hide" ? "hidden" : action === "flag" ? "flagged" : "published";
+    if (action === "purge") {
+      await admin.from("chat_messages").delete().eq("id", messageId);
+    } else {
+      const newStatus =
+        action === "hide"
+          ? "hidden"
+          : action === "delete"
+          ? "deleted"
+          : action === "flag"
+          ? "flagged"
+          : "published";
+      await admin
+        .from("chat_messages")
+        .update({
+          status: newStatus,
+          moderation_reason: action === "restore" ? null : reason || null,
+        })
+        .eq("id", messageId);
+    }
 
-    await admin
-      .from("chat_messages")
-      .update({ status: newStatus, moderation_reason: reason || null })
-      .eq("id", messageId);
-
-    await admin.from("chat_moderation_logs").insert({
-      message_id: messageId,
-      moderator_id: adminId || null,
-      action,
-      reason: reason || null,
-    });
+    if (action !== "purge") {
+      await admin.from("chat_moderation_logs").insert({
+        message_id: messageId,
+        moderator_id: adminId || null,
+        action,
+        reason: reason || null,
+      });
+    }
 
     return { success: true };
   } catch (err: any) {

@@ -19,18 +19,7 @@ export interface VisitorSessionRecord {
 
 export async function getVisitorSessionsAction(): Promise<VisitorSessionRecord[]> {
   if (!isSupabaseConfigured()) {
-    return [
-      {
-        id: "sess-1",
-        visitor_id: "vis_demo_8f9a2b",
-        display_name: "Maria Santos (Demo)",
-        is_restricted: false,
-        restriction_reason: null,
-        restricted_until: null,
-        created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-        last_seen_at: new Date(Date.now() - 60000 * 5).toISOString(),
-      },
-    ];
+    return [];
   }
 
   try {

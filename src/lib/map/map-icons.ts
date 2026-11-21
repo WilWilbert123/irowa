@@ -15,17 +15,29 @@ export function createCategoryDivIcon(
   const markerColor = isUnavailable ? "#e11d48" : (customColor || preset.defaultColor);
   const iconSvg = preset.svgPath;
 
+  const pulseEffects = isSelected
+    ? `
+      <span class="absolute w-14 h-14 rounded-full animate-ping pointer-events-none" style="background-color: ${markerColor}; opacity: 0.45;"></span>
+      <span class="absolute w-12 h-12 rounded-full animate-pulse pointer-events-none border-2 border-white/90" style="background-color: ${markerColor}; opacity: 0.35; box-shadow: 0 0 18px 4px ${markerColor};"></span>
+    `
+    : "";
+
   const html = `
-    <div class="relative flex items-center justify-center transition-transform duration-200 ${
+    <div class="relative flex items-center justify-center transition-transform duration-300 ${
       isSelected ? "scale-125 z-50" : "hover:scale-110"
     }">
-      <div class="w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 border-white dark:border-slate-800 ring-2 ring-black/10"
-           style="background-color: ${markerColor}">
+      ${pulseEffects}
+      <div class="relative z-10 w-9 h-9 rounded-full flex items-center justify-center shadow-lg ${
+        isSelected
+          ? "border-[3px] border-white ring-4 ring-white/50 shadow-2xl"
+          : "border-2 border-white dark:border-slate-800 ring-2 ring-black/10"
+      }"
+           style="background-color: ${markerColor}; ${isSelected ? `box-shadow: 0 0 16px 2px ${markerColor};` : ""}">
         <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           ${iconSvg}
         </svg>
       </div>
-      <div class="w-2 h-2 rounded-full absolute -bottom-1 transform translate-y-1/2 border border-white/60 shadow-xs" style="background-color: ${markerColor}"></div>
+      <div class="z-10 w-2.5 h-2.5 rounded-full absolute -bottom-1 transform translate-y-1/2 border border-white shadow-xs" style="background-color: ${markerColor}"></div>
     </div>
   `;
 
