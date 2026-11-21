@@ -25,7 +25,13 @@ export async function submitReportAction(formData: any) {
     return { error: (validated.error as any).issues?.[0]?.message || "Validation failed" };
   }
 
-  return await submitWaterReport(validated.data);
+  const result = await submitWaterReport(validated.data);
+  if (result.success) {
+    revalidatePath("/admin/reports");
+    revalidatePath("/admin");
+    revalidatePath(`/water/${validated.data.water_source_id}`);
+  }
+  return result;
 }
 
 export async function updateReportStatusAction(

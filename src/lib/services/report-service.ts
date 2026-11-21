@@ -21,28 +21,39 @@ export async function submitWaterReport(data: ReportFormData): Promise<{
   }
 
   if (!isSupabaseConfigured()) {
-    const mockId = `rep-${Date.now()}`;
-    MOCK_REPORTS.unshift({
-      id: mockId,
-      water_source_id: data.water_source_id,
-      visitor_id: data.visitor_id,
-      report_type: data.report_type,
-      description: data.description,
-      status: "pending",
-      reviewed_by: null,
-      reviewed_at: null,
-      admin_notes: null,
-      created_at: new Date().toISOString(),
-    });
-    return { success: true, reportId: mockId };
+    return {
+      success: false,
+      error: "Supabase database is not configured.",
+    };
   }
 
   try {
-    const supabase = createClient();
-    const { data: res, error } = await supabase
+    const admin = createAdminClient();
+
+    // Resolve water source ID if a slug was passed instead of a UUID
+    let targetSourceId = data.water_source_id;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetSourceId);
+    if (!isUuid) {
+      const { data: sourceData } = await admin
+        .from("water_sources")
+        .select("id")
+        .eq("slug", targetSourceId)
+        .maybeSingle();
+
+      if (sourceData?.id) {
+        targetSourceId = sourceData.id;
+      } else {
+        return {
+          success: false,
+          error: "Referenced water resource could not be found.",
+        };
+      }
+    }
+
+    const { data: res, error } = await admin
       .from("water_reports")
       .insert({
-        water_source_id: data.water_source_id,
+        water_source_id: targetSourceId,
         visitor_id: data.visitor_id,
         report_type: data.report_type,
         description: data.description,
@@ -51,25 +62,17 @@ export async function submitWaterReport(data: ReportFormData): Promise<{
       .select("id")
       .single();
 
-    if (error) {
-      const mockId = `rep-${Date.now()}`;
-      MOCK_REPORTS.unshift({
-        id: mockId,
-        water_source_id: data.water_source_id,
-        visitor_id: data.visitor_id,
-        report_type: data.report_type,
-        description: data.description,
-        status: "pending",
-        reviewed_by: null,
-        reviewed_at: null,
-        admin_notes: null,
-        created_at: new Date().toISOString(),
-      });
-      return { success: true, reportId: mockId };
+    if (error || !res) {
+      console.error("Failed to insert water report into Supabase:", error);
+      return {
+        success: false,
+        error: error?.message || "Failed to submit report to database.",
+      };
     }
 
     return { success: true, reportId: res.id };
   } catch (err: any) {
+    console.error("Error submitting water report:", err);
     return { success: false, error: err.message || "Failed to submit report" };
   }
 }
